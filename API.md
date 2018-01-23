@@ -5,10 +5,11 @@
 |------------|:----|
 |car_target.py| Armour Detection |
 |circle_test.py| A testing program for circle detection|
-|tool.py|Unclear|
+|tool.py| Supporting file for armour detection program |
 
 ## Complete Documentation for Car Target Detection
 
+### API for functions in the program
 #### func_undistort
 Recover the undistorted image obtained from the camera. </br>
 
@@ -24,11 +25,14 @@ Recover the undistorted image obtained from the camera. </br>
 <b>paramter :</b>
 * <b>mat</b> - image matrix
 * <b>color_threshold</b> - the value of threshold
-* <b>square_ratio</b> - the standard ratio of length and width of a given square
-* <b>angle_rate</b> - the value of standard angle between the lengh and width of a given square_ratio
-* <b>length_rate</b> -
-* <b>matrix threshold</b> -
+* <b>square_ratio</b> - the threshold ratio of height/width (any smaler than the threshold will be deleted)
+* <b>angle_rate</b> - angle factor for matching
+* <b>length_rate</b> - length factor for matching
+* <b>matrix threshold</b> - match those with score greater than threshold
 * <b>DIST</b> - distance of the target
+
+<b> return :</b>
+* return: [] when no target, [x, y, pixel count] for target
 
 #### func_get_delete_strict_list
 Get a strict list of deleted component. Used when target is near
@@ -50,3 +54,46 @@ Main function of detection.
 
 <b>paramter :</b>
 * <b>mat</b> - image matrix
+
+### Detail description on Armour Detection
+
+#### Setup
+Set up undisorted matrix and some paramters
+
+#### Program
+
+##### 1. Setup shooting range
+
+##### 2. Judge image souce and run corresponding program
+
+###### 2.1 Image source is picture<br>
+
+Give a file list<br>
+Read pictures in the list one by one.<br>
+Store a read picture in <b>mat</b>, and run <b>main(mat)</b> <br>
+Quit the program and close all windows when press "q"<br>
+###### 2.2 Image source is camera
+
+Capture a picture with camera<br>
+If camera is open, read the captured picture, stored it in <b>mat</b>, run <b>func_undistort(mat)</b> to undisort the captured picture, and run <b>main(mat)</b><br>
+Stop capturing, and close all windows
+
+###### 2.3 Image source is video
+
+Run a video capturer to capture pictures from a video<br>
+While capturer is running, read the image captured, store it in <b>mat</b> and run <b>main(mat)</b><br>
+Wait for some seconds (the exact number of seconds is decided by variable <b>wait</b>)<br>
+When press "q", break; when press "p", set <b>wait</b> to 0; when press "c",set <b>wait</b> to 10.<br>
+Stop capturing and close all windows.
+
+#### 3. Main
+1. Get global variable : target_last and MIN_STEP. Copy <b>mat</b> (input image matrix) to <b>origin</b>, set <b>tstart</b> to starting time.
+2. Track the near by targets :<b>track</b>(detail information of this function is dipicted below)
+3. If no target is found, track the far targets.
+4. Calculate the distance of the target
+5. Draw a circle on the detected targets.
+
+#### 4.Track
+1. Relative threshold: set 255 if b - r < color_threshold. Show the processed image if it's in debug mode.<br>
+
+%%%%%%%%%%%%%%%% Unfinished %%%%%%%%%%%%%%%%%%%%%%%
