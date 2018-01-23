@@ -9,17 +9,17 @@ import numpy as np
 import math
 import copy
 import tool
-BLUE, RED = 0, 1
-NEAR, MID, FAR, ULTRA = 0, 1, 2, 3
-D, R = 0, 1
-CAM, PIC, VID = 0, 1, 2
+BLUE, RED = 0, 1 # Color of target bar
+NEAR, MID, FAR, ULTRA = 0, 1, 2, 3 # Distance of target : near, mideum range, far,
+D, R = 0, 1 # Mode : debug mode, running mode
+CAM, PIC, VID = 0, 1, 2 # Image Source : Camera, Picture, Video
 
-MODE = D
-SRC = PIC
-TARGET = BLUE
-DIST = NEAR
+MODE = D # Setup running mode
+SRC = PIC # Setup image source
+TARGET = BLUE # Setup color of the target
+DIST = NEAR # Setup suppose distance of a target
 
-MIN_STEP = 5
+MIN_STEP = 5 #FIXME Unkown Use #Never used before reassigned a new value
 
 tool.func_tool_set_quit()
 
@@ -41,13 +41,13 @@ def func_undistort(mat):
 
 def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_threshold, DIST):
     """
-    1. color threshold 
+    1. color threshold
     2. segment (connected component), get bar
     delete untra small and large
     3. match bar, get bar pairs
     similar angle and length
     4. select bar pairs
-          |       / 
+          |       /
          |     / |
         |    /  |
        | z /   |
@@ -58,10 +58,10 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     60 < theta < 120
     1.3 < x / y < 3
     :param mat: a frame
-    :param color_threshold: 
+    :param color_threshold: value of color threshold
     :param square_ratio: delete connect component which height / width < square_ratio, delete too "fat"
     :param angle_rate: bar match angle rate factor
-    :param length_rate: bar match length rate factor 
+    :param length_rate: bar match length rate factor
     :param matrix_threshold: match pairs by rate score > matrix_threshold
     :param DIST: NEAR or FAR, not use
     :return: [] when no target, [x, y, pixel count] for target
@@ -118,8 +118,8 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     def func_get_delete_strict_list(connect_data, square_ratio):
         """
         strict delete connect component, used when object is near
-        :param connect_data: 
-        :param square_ratio: 
+        :param connect_data:
+        :param square_ratio:
         :return: index of connect_data need to delete
         """
         # delete vertical / horizontal < square_scale partitions
@@ -139,11 +139,11 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     def func_get_delete_loose_list(connect_data, square_ratio):
         """
         func_get_delete_loose_list seems the same as func_get_delete_strict_list.
-        Actually I want to distinguish near and far by calling two diff. function, 
-        but later I decided to call track() with diff. square_ratio 
-        :param connect_data: 
-        :param square_ratio: 
-        :return: 
+        Actually I want to distinguish near and far by calling two diff. function,
+        but later I decided to call track() with diff. square_ratio
+        :param connect_data:
+        :param square_ratio:
+        :return:
         """
         connect_ratio_delete_list = np.where((connect_data[:, 3] / connect_data[:, 2]) < square_ratio)[0]
         # delete area < 5
@@ -376,9 +376,9 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
 def main(mat):
     global target_last
     global MIN_STEP
-    origin = copy.deepcopy(mat)
-    tstart = datetime.datetime.now()
-    # 80
+    origin = copy.deepcopy(mat) # copy image source
+    tstart = datetime.datetime.now() # get starting time
+    # 80 # track the targets
     if TARGET == BLUE:
         target = track(mat, 80, 2.5, 0.5, 1, 13, NEAR)
         print("Near : Target: x, y " + str(target))
@@ -391,18 +391,18 @@ def main(mat):
         if len(target) == 0:
             target = track(mat, 50, 0.5, 0.3, 0.6, 13, MID)
             print("Far : Target: x, y " + str(target))
-    tend = datetime.datetime.now()
-    print(tend - tstart)
+    tend = datetime.datetime.now() # get ending time
+    print(tend - tstart) # print running time
     if len(target) != 0:
         MIN_STEP -= 1
         MIN_STEP = 20 if MIN_STEP < 5 else MIN_STEP
-        dist = np.sqrt((np.power(target[0] - target_last[0], 2) +
+        dist = np.sqrt((np.power(target[0] - target_last[0], 2) + # calculate the distance
                         np.power(target[1] - target_last[1], 2)))
         if dist > MIN_STEP:
             target_last += ((target[:2] - target_last) / dist * MIN_STEP).astype(np.int32)
         else:
             target_last = target[:2]
-        cv2.circle(origin, (target[0], target[1]), 8, (0, 255, 0), -1)
+        cv2.circle(origin, (target[0], target[1]), 8, (0, 255, 0), -1) # draw a circle on the target
     if len(target) == 0:
         MIN_STEP += 1
         MIN_STEP = 50 if MIN_STEP > 50 else MIN_STEP
@@ -419,7 +419,7 @@ def main(mat):
     tool.func_tool_set_mouth_callback_show_pix("raw_img", origin)
 
 
-target_last = np.array([320, 240], dtype=np.int32)
+target_last = np.array([320, 240], dtype=np.int32) #FIXME Unknown use Might be boundary of screen
 
 if SRC == PIC:
     file_list = tool.func_tool_folder("C:\\Users\\lenovo\\Desktop\\blue_near", "png")
@@ -457,7 +457,7 @@ if SRC == VID:
     while cap.isOpened():
         count += 1
         ret, mat = cap.read()
-
+        #FIXME skip is not modified during the process, how will the process terminate ?
         if skip == 0:
             print("frame " + str(count))
             main(mat)
