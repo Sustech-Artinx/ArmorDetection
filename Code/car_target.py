@@ -92,8 +92,8 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     connect_label = connect_output[1]
     # connect_data = [[leftmost (x), topmost (y), horizontal size, vertical size, total area in pixels], ...]
     connect_data = connect_output[2]
-    connect_data[connect_data[:, 0] >= mat.shape[1]] = 0   # ?
-    connect_data[connect_data[:, 1] >= mat.shape[0]] = 0   # ?
+    connect_data[connect_data[:, 0] >= mat.shape[1]] = 0   # clear connected components out of bound
+    connect_data[connect_data[:, 1] >= mat.shape[0]] = 0   # clear connected components out of bound 
     if MODE == D:
         print("connected components num: " + str(len(connect_output[2])))
 
@@ -177,18 +177,18 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     # We can first crop this component from label map according to component info
     # This use something like np.argmin, np.argmax
     bar_peak_point = []
-    for i in range(len(connect_remain)):
-        top_y = connect_remain[i][1]
-        top_x_series = np.where(connect_label[top_y + 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0]
+    for i in range(len(connect_remain)):# connect_remain: data tuple of remained connecetd components
+        top_y = connect_remain[i][1] # top y coordinate of connecetd components
+        top_x_series = np.where(connect_label[top_y + 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0] # locate a sereis of x coordinate of the light bar # Unsure: why first y, then x ? why only keep index[0] ? 
         if len(top_x_series) == 0:
             return []
-        n1 = int((np.max(top_x_series) + np.min(top_x_series)) / 2 + connect_remain[i][0])
-        down_y = connect_remain[i][1] + connect_remain[i][3] - 1
-        down_x_series = np.where(connect_label[down_y - 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0]
+        n1 = int((np.max(top_x_series) + np.min(top_x_series)) / 2 + connect_remain[i][0]) # x coordinate of mid point of top line of light bar 
+        down_y = connect_remain[i][1] + connect_remain[i][3] - 1 # y coordinate of bottom line of light bar 
+        down_x_series = np.where(connect_label[down_y - 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0] # series of x coordinate of bottom line of light bar 
         if len(down_x_series) == 0:
             return []
-        n2 = int((np.max(down_x_series) + np.min(down_x_series)) / 2 + connect_remain[i][0])
-        bar_peak_point.append([n1, top_y, n2, down_y, connect_remain[i][4]])
+        n2 = int((np.max(down_x_series) + np.min(down_x_series)) / 2 + connect_remain[i][0]) # x coordinate of mid point of bottom line of light bar s
+        bar_peak_point.append([n1, top_y, n2, down_y, connect_remain[i][4]]) #FIXME # Should be [top_mid_x, top_mid_y, down_mid_x, down_mid_y, pixel count]
     # bar_peak_point [[top_left_x, top_left_y, down_right_x, down_right_y, pixel count], ...]
     bar_peak_point = np.array(bar_peak_point)
 
