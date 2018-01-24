@@ -55,6 +55,15 @@ Main function of detection.
 <b>paramter :</b>
 * <b>mat</b> - image matrix
 
+#### cv2.connectedComponentsWithStats
+
+connect_output is a tuple :
+- int component count,
+- ndarray label map : use int to label connect  component, same int value means one component, size equal to "b"
+- ndarray connect component info : a n * 5 ndarray to show connect component info, [left_top_x, left_top_y, width, height, pixel number])
+- ndarray unused not clear
+
+
 ### Detail description on Armour Detection
 
 #### Setup
@@ -95,5 +104,10 @@ Stop capturing and close all windows.
 
 #### 4.Track
 1. Relative threshold: set 255 if b - r < color_threshold. Show the processed image if it's in debug mode.<br>
-
-%%%%%%%%%%%%%%%% Unfinished %%%%%%%%%%%%%%%%%%%%%%%
+2. Label connected component: Use <b>cv2.connectedComponentsWithStats</b> (whose detail information is given in function part) to label. Draw rectangles on the selected connected components if in Debug mode.
+3. Get delete list according to the ratio of length and height, and area of connected components ( use <b>func_get_delete_strict_list</b> in <b>NEAR</b> mode and with <b>func_get_delete_loose_list</b> in <b>MID</b> mode to get the list of connecetd components to be deleted ). If not connected components are remained after deletion, reutun.
+4. Get y coordinate and x coordinate of mid point for both top line and bottom line of the light bar. Draw a cirlce on both points when in debug mode.
+5. Calculate bar length, bar angle and get weighted sum.
+6. Threshold weighted sum, select pairs by threshold.
+7. Calculate the x and y distance of selected paris.
+8. Calculate the height sum and select pairs with maximum pixel to be the target. 
