@@ -93,7 +93,7 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     # connect_data = [[leftmost (x), topmost (y), horizontal size, vertical size, total area in pixels], ...]
     connect_data = connect_output[2]
     connect_data[connect_data[:, 0] >= mat.shape[1]] = 0   # clear connected components out of bound
-    connect_data[connect_data[:, 1] >= mat.shape[0]] = 0   # clear connected components out of bound 
+    connect_data[connect_data[:, 1] >= mat.shape[0]] = 0   # clear connected components out of bound
     if MODE == D:
         print("connected components num: " + str(len(connect_output[2])))
 
@@ -179,12 +179,12 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     bar_peak_point = []
     for i in range(len(connect_remain)):# connect_remain: data tuple of remained connecetd components
         top_y = connect_remain[i][1] # top y coordinate of connecetd components
-        top_x_series = np.where(connect_label[top_y + 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0] # locate a sereis of x coordinate of the light bar # Unsure: why first y, then x ? why only keep index[0] ? 
+        top_x_series = np.where(connect_label[top_y + 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0] # locate a sereis of x coordinate of the light bar # Unsure: why first y, then x ? why only keep index[0] ?
         if len(top_x_series) == 0:
             return []
-        n1 = int((np.max(top_x_series) + np.min(top_x_series)) / 2 + connect_remain[i][0]) # x coordinate of mid point of top line of light bar 
-        down_y = connect_remain[i][1] + connect_remain[i][3] - 1 # y coordinate of bottom line of light bar 
-        down_x_series = np.where(connect_label[down_y - 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0] # series of x coordinate of bottom line of light bar 
+        n1 = int((np.max(top_x_series) + np.min(top_x_series)) / 2 + connect_remain[i][0]) # x coordinate of mid point of top line of light bar
+        down_y = connect_remain[i][1] + connect_remain[i][3] - 1 # y coordinate of bottom line of light bar
+        down_x_series = np.where(connect_label[down_y - 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0] # series of x coordinate of bottom line of light bar
         if len(down_x_series) == 0:
             return []
         n2 = int((np.max(down_x_series) + np.min(down_x_series)) / 2 + connect_remain[i][0]) # x coordinate of mid point of bottom line of light bar s
@@ -240,13 +240,13 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
 
     # Calculate angle matrix
     matrix_bar_angle_diff = []
-    for i in range(len(bar_angle)):
+    for i in range(len(bar_angle)):# bar_angle : all bar angles
         temp_one_line = []
         for j in range(len(bar_angle)):
             if j <= i:
                 temp_one_line.append(0)
             else:
-                temp_one_line.append(abs(bar_angle[i] - bar_angle[j]))
+                temp_one_line.append(abs(bar_angle[i] - bar_angle[j])) # get relative bar angles
         matrix_bar_angle_diff.append(temp_one_line)
     matrix_bar_angle_diff = np.array(matrix_bar_angle_diff)
     if MODE == D:
