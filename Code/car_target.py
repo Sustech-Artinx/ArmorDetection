@@ -213,14 +213,14 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
         temp_one_line = []
         for j in range(len(bar_length)):
             if j <= i:
-                temp_one_line.append(0)
+                temp_one_line.append(0)# only upper triangular part of the matrix is calculated
             else:
                 if abs(bar_length[i] - bar_length[j]) == 0:
                     temp_one_line.append(1)
                 else:
                     temp_one_line.append(abs(bar_length[i] - bar_length[j]))
         matrix_bar_length_diff.append(temp_one_line)
-    matrix_bar_length_diff = np.array(matrix_bar_length_diff)
+    matrix_bar_length_diff = np.array(matrix_bar_length_diff) # get an array of absoulte bar length difference
     if MODE == D:
         print("matrix_bar_length_diff")
         for i in range(len(matrix_bar_length_diff)):
@@ -233,7 +233,7 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
             bar_angle.append(90)
         else:
             arc = math.atan(float(bar_peak_point[i][3] - bar_peak_point[i][1]) / float(bar_peak_point[i][2] - bar_peak_point[i][0])) * 180 / math.pi
-            arc = arc if arc > 0 else arc + 180
+            arc = arc if arc > 0 else arc + 180 # phase shift to make it the same angle for right bar and left bar
             bar_angle.append(arc)
     if MODE == D:
         print("bar_angle" + str(bar_angle))
@@ -246,9 +246,9 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
             if j <= i:
                 temp_one_line.append(0)
             else:
-                temp_one_line.append(abs(bar_angle[i] - bar_angle[j])) # get relative bar angles
-        matrix_bar_angle_diff.append(temp_one_line)
-    matrix_bar_angle_diff = np.array(matrix_bar_angle_diff)
+                temp_one_line.append(abs(bar_angle[i] - bar_angle[j])) # get bar angle difference for j > i #FIXME why necessary ?
+        matrix_bar_angle_diff.append(temp_one_line) # a list of abs difference of bar angles
+    matrix_bar_angle_diff = np.array(matrix_bar_angle_diff) # make the list an array
     if MODE == D:
         print("matrix_bar_angle_diff")
         for i in range(len(matrix_bar_angle_diff)):
@@ -263,7 +263,7 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
 
     # select pairs by threshold
     matrix_bar_sum_diff_threshold = np.zeros(matrix_bar_sum_diff.shape)
-    matrix_bar_sum_diff_threshold[(matrix_bar_sum_diff < matrix_threshold) & (matrix_bar_sum_diff > 0)] = 1
+    matrix_bar_sum_diff_threshold[(matrix_bar_sum_diff < matrix_threshold) & (matrix_bar_sum_diff > 0)] = 1  # set corresponding position to 1
     if len(np.where(matrix_bar_sum_diff_threshold == 1)[0]) == 0:
         return []
 
@@ -280,7 +280,7 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     matrix_bar_distence_x = np.zeros(matrix_bar_sum_diff_threshold.shape)
     for i in range(len(matrix_bar_distence_x)):
         for j in range(len(matrix_bar_distence_x)):
-            if i < j:
+            if i < j: # bar_peak_point [[top_left_x, top_left_y, down_right_x, down_right_y, pixel count], ...]
                 matrix_bar_distence_x[i][j] = abs(bar_peak_point[i][0] + bar_peak_point[i][2] -
                                                   bar_peak_point[j][0] - bar_peak_point[j][2]) / 2
     matrix_bar_distence_x[matrix_bar_distence_x == 0] = 1
@@ -298,14 +298,14 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
         for j in range(len(matrix_bar_distence_z)):
             if i < j:
                 matrix_bar_distence_z[i][j] = math.sqrt(pow(bar_peak_point[i][1] - bar_peak_point[j][3], 2) + pow(bar_peak_point[i][0] - bar_peak_point[j][2], 2))
-    matrix_bar_arccos = (np.power(matrix_bar_distence_x, 2) + np.power(matrix_bar_distence_y, 2) - np.power(matrix_bar_distence_z, 2)) / 2 / matrix_bar_distence_x / matrix_bar_distence_y
+    matrix_bar_arccos = (np.power(matrix_bar_distence_x, 2) + np.power(matrix_bar_distence_y, 2) - np.power(matrix_bar_distence_z, 2)) / 2 / matrix_bar_distence_x / matrix_bar_distence_y #FIXME
     matrix_bar_arccos[matrix_bar_arccos > 1] = 1
     matrix_bar_arccos[matrix_bar_arccos < -1] = 1
-    matrix_bar_arccos = np.arccos(matrix_bar_arccos) * 180 / math.pi
+    matrix_bar_arccos = np.arccos(matrix_bar_arccos) * 180 / math.pi # transfer measurement into degree
     # 60 < theta < 120
     matrix_bar_arccos_threshold = ((matrix_bar_arccos < 120) & (matrix_bar_arccos > 60)).astype(np.float32)
 
-    # 1.3 < x / y < 3
+    # 1.3 < x / y < 3 threshold for the angle
     matrix_bar_ratio = matrix_bar_distence_x / matrix_bar_distence_y
     matrix_bar_ratio_threshold = ((matrix_bar_ratio < 3) & (matrix_bar_ratio > 1.3)).astype(np.float32)
     matrix_match = matrix_bar_ratio_threshold * matrix_bar_sum_diff_threshold * matrix_bar_arccos_threshold
@@ -345,7 +345,7 @@ def track(mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_th
     if len(np.where(matrix_match == 1)[0]) == 0:
         return []
 
-    # Calculate height sum matrix
+    # Calculate height sum matrix, sum of pixels
     matrix_bar_pixel_sum = np.zeros(matrix_match.shape)
     i, j = np.where(matrix_match == 1)
     for k in range(len(i)):

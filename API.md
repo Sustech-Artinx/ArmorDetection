@@ -108,6 +108,8 @@ Stop capturing and close all windows.
 3. Get delete list according to the ratio of length and height, and area of connected components ( use <b>func_get_delete_strict_list</b> in <b>NEAR</b> mode and with <b>func_get_delete_loose_list</b> in <b>MID</b> mode to get the list of connecetd components to be deleted ). If not connected components are remained after deletion, reutun.
 4. Get y coordinate and x coordinate of mid point for both top line and bottom line of the light bar. Draw a cirlce on both points when in debug mode.
 5. Calculate bar length, bar angle and get weighted sum.
-6. Threshold weighted sum, select pairs by threshold.
-7. Calculate the x and y distance of selected paris.
-8. Calculate the height sum and select pairs with maximum pixel to be the target. 
+6. Calculate bar angle dfference and bar length difference  matrix
+7. Use a weighted sum combining angle difference and length difference, and then threshold the sum to get a primitive match
+8. Calculate x difference, y difference and z difference of each pair of light bars, use the threshold to further distinguish difference in cross ratio and angles.
+9. Times up all three match matrix to get the final match result. (All three matricies are 0-1 matrix and square matrix, it's just like combining 3 relation and keep only those available in all thre matrix as real available pairs).
+9. Calculate the sum of pixels of matching pairs, pick up pairs with most total pixel to be the target. Calculate and return its x and y coordinate.
