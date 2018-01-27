@@ -110,6 +110,6 @@ Stop capturing and close all windows.
 5. Calculate bar length, bar angle and get weighted sum.
 6. Calculate bar angle dfference and bar length difference  matrix
 7. Use a weighted sum combining angle difference and length difference, and then threshold the sum to get a primitive match
-8. Calculate x difference, y difference and z difference of each pair of light bars, use the threshold to further distinguish difference in cross ratio and angles.
+8. Calculate x difference, y difference and z difference of each pair of light bars. Further distinguish difference between pairs by thresholding cross ratio and angles of crossing line between paris.
 9. Times up all three match matrix to get the final match result. (All three matricies are 0-1 matrix and square matrix, it's just like combining 3 relation and keep only those available in all thre matrix as real available pairs).
 9. Calculate the sum of pixels of matching pairs, pick up pairs with most total pixel to be the target. Calculate and return its x and y coordinate.
