@@ -23,10 +23,10 @@ DIST = NEAR # Setup suppose distance of a target
 
 MIN_STEP = 5 #FIXME Unkown Use #Never used before reassigned a new value
 
-# # Port Communication
-# port = '/dev/ttyUSB0'
-# baudrate = 115200
-# wrt = cmc.SerialWriter(port, baudrate)
+# Port Communication
+port = '/dev/ttyUSB0'
+baudrate = 115200
+wrt = cmc.SerialWriter(port, baudrate)
 
 tool.func_tool_set_quit()
 
@@ -433,50 +433,34 @@ target = np.array([320, 240], dtype=np.int32)
 if SRC == PIC:
     file_list = tool.func_tool_folder("/Users/DeriZsy/GitHub_Projects/CV_tools_API/Code/target_imag", "jpg")
 
-    def coordinates_converter(x, y):
-        """Euclid coordinate to angular coordinate"""
-        x = int(x * 2)
-        y = int(y * 2)
-        if x > 320:  # 可能是中位线 (for 640*480)
-            yaw_angle = int(3050 - ((x - 320) / 320 * 3050))
-        else:
-            yaw_angle = int(3050 + ((320 - x) / 320 * 2650))
-        if y < 240:
-            pitch_angle = int(5000 - ((240 - y) / 240 * 5000))
-        else:
-            pitch_angle = int(5000 + ((y - 240) / 240 * 1000))
-        print(yaw_angle)
-        print(pitch_angle)
-        return yaw_angle, pitch_angle
-
     for i in file_list:
         print(i)
         mat = cv2.imread(i)
-    #    mat = cv2.imread("C:\\Users\\lenovo\\Desktop\\RMvideo\\real\\red_near\\2017-05-02-21-41-18.png")
         target = main(mat)
-        angles = coordinates_converter(target[0], target[1])
-        # wrt.write(angles[0], angles[1])
         if cv2.waitKey(0) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
 
 if SRC == CAM:
     cap = cv2.VideoCapture(1)
-    def coordinates_converter(x, y):
-        """Euclid coordinate to angular coordinate"""
-        x = int(x * 2)
-        y = int(y * 2)
-        if x > 320:  # 可能是中位线 (for 640*480)
-            yaw_angle = int(3050 - ((x - 320) / 320 * 3050))
-        else:
-            yaw_angle = int(3050 + ((320 - x) / 320 * 2650))
-        if y < 240:
-            pitch_angle = int(5000 - ((240 - y) / 240 * 5000))
-        else:
-            pitch_angle = int(5000 + ((y - 240) / 240 * 1000))
-        print(yaw_angle)
-        print(pitch_angle)
-        return yaw_angle, pitch_angle
+    pitch = 5000
+    def converter(x, y):
+        global pitch
+        huge_step = 40
+        big_step = 20
+        small_step = 5
+        if 250 < y and pitch <= 5500:
+            pitch += huge_step
+        if 210 < y <= 250 and pitch <= 5500:
+            pitch += big_step
+        elif 190 < y <= 210 and pitch <= 5500:
+            pitch += small_step
+        elif 150 <= y < 180 and pitch >= 4000:
+            pitch -= small_step
+        elif 110 <= y < 150 and pitch >= 4000:
+            pitch -= big_step
+        elif y < 110 and pitch >= 4000:
+            pitch -= huge_step
 
     if cap.isOpened():
         success, frame = cap.read()
@@ -486,8 +470,8 @@ if SRC == CAM:
         success, mat = cap.read()
         mat = func_undistort(mat)
         target = main(mat)
-        # angles = coordinates_converter(target[0],target[1])
-        # wrt.write(angles[0],angles[1])
+        angles = converter(target[0],target[1])
+        wrt.write(angles[0],angles[1])
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()
