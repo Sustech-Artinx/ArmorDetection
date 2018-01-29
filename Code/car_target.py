@@ -17,7 +17,7 @@ D, R = 0, 1 # Mode : debug mode, running mode
 CAM, PIC, VID = 0, 1, 2 # Image Source : Camera, Picture, Video
 
 MODE = D # Setup running mode
-SRC = CAM # Setup image source
+SRC = PIC # Setup image source
 TARGET = BLUE # Setup color of the target
 DIST = NEAR # Setup suppose distance of a target
 
@@ -26,7 +26,7 @@ MIN_STEP = 5 #FIXME Unkown Use #Never used before reassigned a new value
 # Port Communication
 port = '/dev/ttyUSB0'
 baudrate = 115200
-wrt = cmc.SerialWriter(port, baudrate)
+# wrt = cmc.SerialWriter(port, baudrate)
 
 tool.func_tool_set_quit()
 
@@ -424,6 +424,7 @@ def main(mat):
 #    out.write(origin)
     cv2.imshow('raw_img', origin)
     tool.func_tool_set_mouth_callback_show_pix("raw_img", origin)
+    target_last[1] = target_last[1] - 104 # transfer target coordinate to the gun coordinate 
     return target_last
 
 
@@ -436,6 +437,7 @@ if SRC == PIC:
     for i in file_list:
         print(i)
         mat = cv2.imread(i)
+        mat = cv2.resize(mat, (480, 360))
         target = main(mat)
         if cv2.waitKey(0) & 0xFF == ord('q'):
             break
@@ -464,14 +466,16 @@ if SRC == CAM:
 
     if cap.isOpened():
         success, frame = cap.read()
+        frame = cv2.resize(frame,(480,360))
     else:
         success = False
     while success:
         success, mat = cap.read()
+        mat = cv2.resize(mat, (480, 360))
         mat = func_undistort(mat)
         target = main(mat)
         angles = converter(target[0],target[1])
-        wrt.write(angles[0],angles[1])
+        # wrt.write(angles[0],angles[1])
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()
