@@ -9,17 +9,24 @@ import numpy as np
 import math
 import copy
 import tool
+import communicate as cmc
+
 BLUE, RED = 0, 1 # Color of target bar
 NEAR, MID, FAR, ULTRA = 0, 1, 2, 3 # Distance of target : near, mideum range, far,
 D, R = 0, 1 # Mode : debug mode, running mode
 CAM, PIC, VID = 0, 1, 2 # Image Source : Camera, Picture, Video
 
 MODE = D # Setup running mode
-SRC = PIC # Setup image source
+SRC = CAM # Setup image source
 TARGET = BLUE # Setup color of the target
 DIST = NEAR # Setup suppose distance of a target
 
 MIN_STEP = 5 #FIXME Unkown Use #Never used before reassigned a new value
+
+# # Port Communication
+# port = '/dev/ttyUSB0'
+# baudrate = 115200
+# wrt = cmc.SerialWriter(port, baudrate)
 
 tool.func_tool_set_quit()
 
@@ -417,23 +424,60 @@ def main(mat):
 #    out.write(origin)
     cv2.imshow('raw_img', origin)
     tool.func_tool_set_mouth_callback_show_pix("raw_img", origin)
+    return target_last
 
 
 target_last = np.array([320, 240], dtype=np.int32) #FIXME Unknown use Might be boundary of screen
+target = np.array([320, 240], dtype=np.int32)
 
 if SRC == PIC:
-    file_list = tool.func_tool_folder("C:\\Users\\lenovo\\Desktop\\blue_near", "png")
+    file_list = tool.func_tool_folder("/Users/DeriZsy/GitHub_Projects/CV_tools_API/Code/target_imag", "jpg")
+
+    def coordinates_converter(x, y):
+        """Euclid coordinate to angular coordinate"""
+        x = int(x * 2)
+        y = int(y * 2)
+        if x > 320:  # 可能是中位线 (for 640*480)
+            yaw_angle = int(3050 - ((x - 320) / 320 * 3050))
+        else:
+            yaw_angle = int(3050 + ((320 - x) / 320 * 2650))
+        if y < 240:
+            pitch_angle = int(5000 - ((240 - y) / 240 * 5000))
+        else:
+            pitch_angle = int(5000 + ((y - 240) / 240 * 1000))
+        print(yaw_angle)
+        print(pitch_angle)
+        return yaw_angle, pitch_angle
+
     for i in file_list:
         print(i)
         mat = cv2.imread(i)
     #    mat = cv2.imread("C:\\Users\\lenovo\\Desktop\\RMvideo\\real\\red_near\\2017-05-02-21-41-18.png")
-        main(mat)
+        target = main(mat)
+        angles = coordinates_converter(target[0], target[1])
+        # wrt.write(angles[0], angles[1])
         if cv2.waitKey(0) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
 
 if SRC == CAM:
     cap = cv2.VideoCapture(1)
+    def coordinates_converter(x, y):
+        """Euclid coordinate to angular coordinate"""
+        x = int(x * 2)
+        y = int(y * 2)
+        if x > 320:  # 可能是中位线 (for 640*480)
+            yaw_angle = int(3050 - ((x - 320) / 320 * 3050))
+        else:
+            yaw_angle = int(3050 + ((320 - x) / 320 * 2650))
+        if y < 240:
+            pitch_angle = int(5000 - ((240 - y) / 240 * 5000))
+        else:
+            pitch_angle = int(5000 + ((y - 240) / 240 * 1000))
+        print(yaw_angle)
+        print(pitch_angle)
+        return yaw_angle, pitch_angle
+
     if cap.isOpened():
         success, frame = cap.read()
     else:
@@ -441,7 +485,9 @@ if SRC == CAM:
     while success:
         success, mat = cap.read()
         mat = func_undistort(mat)
-        main(mat)
+        target = main(mat)
+        # angles = coordinates_converter(target[0],target[1])
+        # wrt.write(angles[0],angles[1])
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()
@@ -450,7 +496,7 @@ if SRC == CAM:
 if SRC == VID:
 #    fourcc = cv2.VideoWriter_fourcc(*'XVID')
 #    out = cv2.VideoWriter('test.avi', fourcc, 20.0, (640, 480))
-    cap = cv2.VideoCapture('C:\\Users\\lenovo\\Desktop\\RMvideo\\red.avi')
+    cap = cv2.VideoCapture('t2.jpg')
     skip = 0
     count = -1
     wait = 10 if skip == 0 else 0
@@ -460,7 +506,7 @@ if SRC == VID:
         #FIXME skip is not modified during the process, how will the process terminate ?
         if skip == 0:
             print("frame " + str(count))
-            main(mat)
+            target = main(mat)
             k = cv2.waitKey(wait)
             if k & 0xFF == ord('q'):
  #               out.release()
