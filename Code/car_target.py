@@ -16,11 +16,16 @@ NEAR, MID, FAR, ULTRA = 0, 1, 2, 3 # Distance of target : near, mideum range, fa
 D, R = 0, 1 # Mode : debug mode, running mode
 CAM, PIC, VID = 0, 1, 2 # Image Source : Camera, Picture, Video
 
+# Primitive Paramters
 MODE = D # Setup running mode
 SRC = PIC # Setup image source
 TARGET = BLUE # Setup color of the target
 DIST = NEAR # Setup suppose distance of a target
 
+# Subsequential Paramters
+CAM_idx = 0 # Camera Index
+x_len = 480 # size of picture for resizing
+y_len = 360
 MIN_STEP = 5 #FIXME Unkown Use #Never used before reassigned a new value
 
 # Port Communication
@@ -437,22 +442,22 @@ if SRC == PIC:
     for i in file_list:
         print(i)
         mat = cv2.imread(i)
-        mat = cv2.resize(mat, (480, 360))
+        mat = cv2.resize(mat, (x_len, y_len))
         target = main(mat)
         if cv2.waitKey(0) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
 
 if SRC == CAM:
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(CAM_idx)
     if cap.isOpened():
         success, frame = cap.read()
-        frame = cv2.resize(frame,(480,360))
+        frame = cv2.resize(frame,(x_len,y_len))
     else:
         success = False
     while success:
         success, mat = cap.read()
-        mat = cv2.resize(mat, (480, 360))
+        mat = cv2.resize(mat, (x_len, y_len))
         mat = func_undistort(mat)
         target = main(mat)
         angles = cmc.converter(target[0],target[1])
