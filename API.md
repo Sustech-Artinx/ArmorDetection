@@ -1,11 +1,35 @@
 # API
 
 ## Files
-|File Name| Inform|
-|------------|:----|
-|car_target.py| Armour Detection |
-|circle_test.py| A testing program for circle detection|
-|tool.py| Supporting file for armour detection program |
+|File Name            | Inform                                        |
+|------------         |:----                                          |
+|car_target.py        | Armour Detection                              |
+|circle_test.py       | A testing program for circle detection        |
+|tool.py              | Supporting file for armour detection program  |
+|communicate.py       | Module for communication  with car            |
+
+## Tutorail
+
+### For User:
+#### Paramter Setting
+<b>MODE:  </b> Running mode, 'D' for debug mode, 'R' for running mode.
+<b>SRC:   </b> Image source, 'PIC' for reading from picture, 'CAM' for camera, 'VID' for video
+<b>TARGET:</b> Color of target, 'BLUE' detecting blue light bar, 'RED' for detecting red light bar
+
+### For Developer:
+
+#### Fixing Log
+1. Return target coordinate from <b>main(mat)</b> and write to microcomputer from writer
+2. Resizing the output image to a formal value
+3. Match target from camera coordiante to gun coordinate
+4. Converte (x,y) to (pitch, yaw)
+
+#### Imporving Point:
+1. Coordinate covertion
+2. Targeting Mode
+3. Robustness : in current algorithm, final target selection is based on pixel numbers. Whichever methods we used for tracking, we cannot keep tracking a car in real competition. The gun will keep switching between different cars because of the disturbance. This problem must be fixed!  
+4. Computation Speed : try to eliminate for loop and use matrix operation instead)
+
 
 ## Complete Documentation for Car Target Detection
 
