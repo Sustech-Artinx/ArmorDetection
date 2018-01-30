@@ -424,7 +424,7 @@ def main(mat):
 #    out.write(origin)
     cv2.imshow('raw_img', origin)
     tool.func_tool_set_mouth_callback_show_pix("raw_img", origin)
-    target_last[1] = target_last[1] - 104 # transfer target coordinate to the gun coordinate 
+    target_last[1] = target_last[1] - 104 # transfer target coordinate to the gun coordinate
     return target_last
 
 
@@ -445,25 +445,6 @@ if SRC == PIC:
 
 if SRC == CAM:
     cap = cv2.VideoCapture(1)
-    pitch = 5000
-    def converter(x, y):
-        global pitch
-        huge_step = 40
-        big_step = 20
-        small_step = 5
-        if 250 < y and pitch <= 5500:
-            pitch += huge_step
-        if 210 < y <= 250 and pitch <= 5500:
-            pitch += big_step
-        elif 190 < y <= 210 and pitch <= 5500:
-            pitch += small_step
-        elif 150 <= y < 180 and pitch >= 4000:
-            pitch -= small_step
-        elif 110 <= y < 150 and pitch >= 4000:
-            pitch -= big_step
-        elif y < 110 and pitch >= 4000:
-            pitch -= huge_step
-
     if cap.isOpened():
         success, frame = cap.read()
         frame = cv2.resize(frame,(480,360))
@@ -474,8 +455,9 @@ if SRC == CAM:
         mat = cv2.resize(mat, (480, 360))
         mat = func_undistort(mat)
         target = main(mat)
-        angles = converter(target[0],target[1])
-        # wrt.write(angles[0],angles[1])
+        angles = cmc.converter(target[0],target[1])
+        time.sleep(0.015) # limit transmission time for protection
+        wrt.write(angles[0],angles[1])
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()

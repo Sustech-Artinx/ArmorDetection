@@ -9,7 +9,7 @@ class SerialWriter:
 
     def write(self, yaw_angle, pitch_angle):
         """
-        Protocol: 
+        Protocol:
         0xFA + length(2 bytes) + yaw_angle(2 bytes) + pitch_angle(2 bytes) + 0x00(reserved) + 0xFB
         """
         mes = bytearray(
@@ -23,3 +23,22 @@ class SerialWriter:
     # writer.write(5000, 5000)
     # cap = cv2.VideoCapture(0)
 
+
+def converter(x, y):
+    pitch = 5000;
+    global pitch
+    huge_step = 40
+    big_step = 20
+    small_step = 5
+    if 250 < y and pitch <= 5500:
+        pitch += huge_step
+    if 210 < y <= 250 and pitch <= 5500:
+        pitch += big_step
+    elif 190 < y <= 210 and pitch <= 5500:
+        pitch += small_step
+    elif 150 <= y < 180 and pitch >= 4000:
+        pitch -= small_step
+    elif 110 <= y < 150 and pitch >= 4000:
+        pitch -= big_step
+    elif y < 110 and pitch >= 4000:
+        pitch -= huge_step
