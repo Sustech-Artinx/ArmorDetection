@@ -8,19 +8,27 @@ import sys
 import cv2
 
 
-def func_tool_quit(signum, frame):
+def quit(signum, frame):
     print("TOOL : interupt " + str(signum) + " , program terminate")
     sys.exit()
 
 
-def func_tool_set_quit():
+def set_quit():
     '''
     Set Ctrl-C signal to quit.
     '''
-    signal.signal(signal.SIGINT, func_tool_quit)
+    signal.signal(signal.SIGINT, quit)
 
 
-def func_tool_folder(file_dir, file_type):
+# A decorator
+def quitable(func):
+    def f(*args, **kwargs):
+        signal.signal(signal.SIGINT, quit)
+        func(*args, **kwargs)
+    return f
+
+
+def folder(file_dir, file_type):
     '''
     Return a list of a type of files in a folder.
     
@@ -40,12 +48,12 @@ def func_tool_folder(file_dir, file_type):
     return file_list
 
 
-def func_tool_mouth_callback_show_pix(event, x, y, a, b):
+def mouth_callback_show_pix(event, x, y, a, b):
     if event == cv2.EVENT_LBUTTONDOWN:
         print("x, y, b, g, r " + str(x) + " " + str(y) + " " + str(b[y, x]))
 
 
-def func_tool_set_mouth_callback_show_pix(window, mat):
+def set_mouth_callback_show_pix(window, mat):
     '''
     Set mouth callback for a window and a mat. Left click a pixel and consol will print [x, y, b, g, r] 
     
@@ -53,4 +61,4 @@ def func_tool_set_mouth_callback_show_pix(window, mat):
         window: A window to set mat callback
         mat: A mat to print pixel
     '''
-    cv2.setMouseCallback(window, func_tool_mouth_callback_show_pix, mat)
+    cv2.setMouseCallback(window, mouth_callback_show_pix, mat)

@@ -4,12 +4,9 @@ __date__ = '2018/01/22'
 
 
 import cv2
-import cv2.cv as cv
 import numpy as np
-import tool
+import tools
 import serial
-# import binascill
-# import string
 
 
 '''
@@ -84,7 +81,7 @@ def func_detect_circle(frame, transmission):
 
 
 t = serial.Serial('/dev/ttyUSB0', 115200)
-tool.func_tool_set_quit()
+tools.set_quit()
 cap = cv2.VideoCapture(0)
 while 1:
     ret, frame = cap.read()
