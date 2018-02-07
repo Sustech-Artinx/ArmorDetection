@@ -7,8 +7,7 @@ import copy
 import math
 import numpy as np
 from enum import Enum
-from datetime import datetime
-from .tools import set_mouth_callback_show_pix
+from tools import set_mouth_callback_show_pix
 
 
 class BarColor(Enum):
@@ -26,12 +25,13 @@ class TargetDis(Enum):
 
 
 class Detector:
-    def __init__(self, color: BarColor, min_step: int = 5, debug: bool = False):
+    def __init__(self, color: BarColor, debug: bool = False):
         self.color = color
         self.debug = debug
-        self.min_step = min_step # FIXME Unknown Use # Never used before reassigned a new value
-        self.target_last = np.array([320, 240], dtype=np.int32)
         self.distance = TargetDis.NEAR
+        # self.min_step = 5 # FIXME Unknown Use # Never used before reassigned a new value
+        # self.target_last = np.array([240, 180], dtype=np.int32) # suggest setting the central point as the initial value
+
 
     def track(self, mat, color_threshold, square_ratio, angle_rate, length_rate, matrix_threshold):
         """
@@ -58,7 +58,7 @@ class Detector:
         :param length_rate: bar match length rate factor
         :param matrix_threshold: match pairs by rate score > matrix_threshold
         :param DIST: NEAR or FAR, not use
-        :return: [] when no target, [x, y, pixel count] for target
+        :return: None when no target, (x, y, pixel_count) for target
         """
         # FIXME
 
@@ -84,15 +84,16 @@ class Detector:
         # connect component info - a n * 5 ndarray to show connect component info, [left_top_x, left_top_y, width, height, pixel number]
 
         # Delete Component according to Height / Width >= 3
+        connect_label = connect_output[1]
         # connect_data = [[leftmost (x), topmost (y), horizontal size, vertical size, total area in pixels], ...]
-        _, connect_label, connect_data = connect_output
+        connect_data = connect_output[2]
         connect_data[connect_data[:, 0] >= mat.shape[1]] = 0  # clear connected components out of bound
         connect_data[connect_data[:, 1] >= mat.shape[0]] = 0  # clear connected components out of bound
 
         if self.debug:
             print("connected components num: " + str(len(connect_output[2])))
 
-            print("square_scale :" + str(connect_data[:, 3] / connect_data[:, 2]))
+            print("square_scale: " + str(connect_data[:, 3] / connect_data[:, 2]))
             connect_max_index = np.argmax(connect_data[:, 4])
             connect_label_show = copy.deepcopy(connect_label).astype(np.uint8)
             if connect_max_index != 0:
@@ -140,8 +141,7 @@ class Detector:
             """
             connect_ratio_delete_list = np.where((connect_data[:, 3] / connect_data[:, 2]) < square_ratio)[0]
             # delete area < 5
-            connect_size_delete_list = np.where((connect_data[:, 4] < 30) | (connect_data[:, 4] > 3000))[
-                0]  # why 3000 ?
+            connect_size_delete_list = np.where((connect_data[:, 4] < 30) | (connect_data[:, 4] > 3000))[0] # why 3000 ?
             connect_delete_list = np.hstack((connect_ratio_delete_list, connect_size_delete_list))
 
             if self.debug:
@@ -160,13 +160,16 @@ class Detector:
             connect_delete_list = []
 
         connect_remain = []
-        for i in range(len(connect_data)):
-            if i not in connect_delete_list:
-                connect_remain.append(connect_data[i])
+        # for i in range(len(connect_data)):
+        #     if i not in connect_delete_list:
+        #         connect_remain.append(connect_data[i])
+        for each in connect_data:
+            if each not in connect_delete_list:
+                connect_remain.append(each)
 
-        # no target return [] if all partitions are deleted
+        # no target return None if all partitions are deleted
         if len(connect_remain) < 2:
-            return []
+            return None
 
         # Get peak_point points in each light bar
         # FIXME:
@@ -174,38 +177,37 @@ class Detector:
         # We can first crop this component from label map according to component info
         # This use something like np.argmin, np.argmax
         bar_peak_point = []
-        for i in range(len(connect_remain)):  # connect_remain: data tuple of remained connecetd components
-            top_y = connect_remain[i][1]  # top y coordinate of connecetd components
-            top_x_series = \
-            np.where(connect_label[top_y + 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0]
+        for each in connect_remain: # connect_remain: data tuple of remained connecetd components
+            top_y = each[1] # top y coordinate of connecetd components
+            top_x_series = np.where(connect_label[top_y+1, each[0] : each[0]+each[2]] != 0)[0]
             # locate a sereis of x coordinate of the light bar
             # Unsure: why first y, then x ? why only keep index[0] ?
             if len(top_x_series) == 0:
-                return []
-            # x coordinate of mid point of top line of light bar
-            n1 = int((np.max(top_x_series) + np.min(top_x_series)) / 2 + connect_remain[i][0])
-            down_y = connect_remain[i][1] + connect_remain[i][3] - 1  # y coordinate of bottom line of light bar
-            down_x_series = \
-            np.where(connect_label[down_y - 1, connect_remain[i][0]:connect_remain[i][0] + connect_remain[i][2]] != 0)[0]
+                return None
+            n1 = int((np.max(top_x_series) + np.min(top_x_series)) / 2 + each[0]) # x coordinate of mid point of top line of light bar
+            down_y = each[1] + each[3] - 1 # y coordinate of bottom line of light bar
+            down_x_series = np.where(connect_label[down_y-1, each[0]: each[0]+each[2]] != 0)[0]
             # series of x coordinate of bottom line of light bar
             if len(down_x_series) == 0:
-                return []
-            n2 = int((np.max(down_x_series) + np.min(down_x_series)) / 2 + connect_remain[i][0])
+                return None
+            n2 = int((np.max(down_x_series) + np.min(down_x_series)) / 2 + each[0])
             # x coordinate of mid point of bottom line of light bar s
-            bar_peak_point.append([n1, top_y, n2, down_y, connect_remain[i][4]])
-            # FIXME # Should be [top_mid_x, top_mid_y, down_mid_x, down_mid_y, pixel count]
-        bar_peak_point = np.array(bar_peak_point) # [[top_left_x, top_left_y, down_right_x, down_right_y, pixel count], ...]
+            bar_peak_point.append([n1, top_y, n2, down_y, each[4]])
+            # Should be [top_mid_x, top_mid_y, down_mid_x, down_mid_y, pixel count]
+        # [[top_left_x, top_left_y, down_right_x, down_right_y, pixel count], ...]
+        bar_peak_point = np.array(bar_peak_point)
+
         if self.debug:
-            for i in range(len(bar_peak_point)):
-                cv2.circle(mat, (bar_peak_point[i][0], bar_peak_point[i][1]), 3, (0, 0, 255), -1)
-                cv2.circle(mat, (bar_peak_point[i][2], bar_peak_point[i][3]), 3, (0, 0, 255), -1)
+            for each in bar_peak_point:
+                cv2.circle(mat, (each[0], each[1]), 3, (0, 0, 255), -1)
+                cv2.circle(mat, (each[2], each[3]), 3, (0, 0, 255), -1)
             for i in range(len(connect_remain)):
                 cv2.putText(mat, str(i), (connect_remain[i][0] - 5, connect_remain[i][1] - 5), cv2.FONT_HERSHEY_SIMPLEX,
                             0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
         # Calculate bar bar_length, list
-        bar_length = np.sqrt(np.power((bar_peak_point[:, 3] - bar_peak_point[:, 1]), 2) + np.power(
-            (bar_peak_point[:, 2] - bar_peak_point[:, 0]), 2))
+        bar_length = np.sqrt(np.power((bar_peak_point[:, 3] - bar_peak_point[:, 1]), 2) +
+                             np.power((bar_peak_point[:, 2] - bar_peak_point[:, 0]), 2))
         if self.debug:
             print("bar_length" + str(bar_length))
 
@@ -236,8 +238,8 @@ class Detector:
             if bar_peak_point[i][2] - bar_peak_point[i][0] == 0:
                 bar_angle.append(90)
             else:
-                arc = math.atan(float(bar_peak_point[i][3] - bar_peak_point[i][1]) / float(
-                    bar_peak_point[i][2] - bar_peak_point[i][0])) * 180 / math.pi
+                arc = math.atan(float(bar_peak_point[i][3] - bar_peak_point[i][1]) /
+                                float(bar_peak_point[i][2] - bar_peak_point[i][0])) * 180 / math.pi
                 arc = arc if arc > 0 else arc + 180  # phase shift to make it the same angle for right bar and left bar
                 bar_angle.append(arc)
         if self.debug:
@@ -270,10 +272,10 @@ class Detector:
 
         # select pairs by threshold
         matrix_bar_sum_diff_threshold = np.zeros(matrix_bar_sum_diff.shape)
-        matrix_bar_sum_diff_threshold[
-            (matrix_bar_sum_diff < matrix_threshold) & (matrix_bar_sum_diff > 0)] = 1  # set corresponding position to 1
+        # set corresponding position to 1
+        matrix_bar_sum_diff_threshold[(matrix_bar_sum_diff < matrix_threshold) & (matrix_bar_sum_diff > 0)] = 1
         if len(np.where(matrix_bar_sum_diff_threshold == 1)[0]) == 0:
-            return []
+            return None
 
         """
                /|
@@ -355,7 +357,7 @@ class Detector:
                 print(matrix_match[i])
 
         if len(np.where(matrix_match == 1)[0]) == 0:
-            return []
+            return None
 
         # Calculate height sum matrix, sum of pixels
         matrix_bar_pixel_sum = np.zeros(matrix_match.shape)
@@ -384,69 +386,94 @@ class Detector:
             cv2.imshow('Debug', mat)
             set_mouth_callback_show_pix("Debug", mat)
 
-        return np.array([target_x, target_y, bar_peak_point[max_j][2]])
+        return target_x, target_y, bar_peak_point[max_j][2]
         # return [target_x, target_y, bar_peak_point[max_j][2]]
         # Why np.array?
 
-
-    def main_target(self, mat):
-        # global target_last
-        # global MIN_STEP
-        origin = copy.deepcopy(mat)  # copy image source
-        t_start = datetime.now()  # get starting time
-        # 80
-
-        # track the targets
-        target = np.array([])
+    def target(self, mat):
+        t = None
         self.distance = TargetDis.NEAR
         if self.color == BarColor.BLUE:
-            target = self.track(mat, 80, 2.5, 0.5, 1, 13)
-            print("Near : Target: x, y " + str(target))
-            if len(target) == 0:
-                self.distance = TargetDis.MID
-                target = self.track(mat, 80, 0.8, 0.5, 1, 13)
-                print("Far : Target: x, y " + str(target))
+            t = self.track(mat, 80, 2.5, 0.5, 1, 13)
+            if len(t) == 0:
+                t = self.track(mat, 80, 0.8, 0.5, 1, 13)
         elif self.color == BarColor.RED:
-            target = self.track(mat, 50, 2, 0.5, 1, 13)
-            print("Near : Target: x, y " + str(target))
-            if len(target) == 0:
-                self.distance = TargetDis.MID
-                target = self.track(mat, 50, 0.5, 0.3, 0.6, 13)
-                print("Far : Target: x, y " + str(target))
-        t_end = datetime.now()  # get ending time
-        print(t_end - t_start)  # print running time
-        if len(target) > 0:
-            # MIN_STEP -= 1
-            # MIN_STEP = 20 if MIN_STEP < 5 else MIN_STEP
-            self.min_step = 20 if self.min_step <= 5 else self.min_step - 1
-            dist = np.sqrt((np.power(target[0] - self.target_last[0], 2) +  # calculate the distance
-                            np.power(target[1] - self.target_last[1], 2)))
-            if dist > self.min_step:
-                self.target_last += ((target[:2] - self.target_last) / dist * self.min_step).astype(np.int32)
-            else:
-                self.target_last = target[:2]
-            if self.debug:
-                cv2.circle(origin, (target[0], target[1]), 8, (0, 255, 0), -1)  # draw a circle on the target
-        else:
-            self.min_step = 50 if self.min_step >= 50 else self.min_step
-            # MIN_STEP += 1
-            # MIN_STEP = 50 if MIN_STEP > 50 else MIN_STEP
+            t = self.track(mat, 50, 2, 0.5, 1, 13)
+            if len(t) == 0:
+                t = self.track(mat, 50, 0.5, 0.3, 0.6, 13)
 
-        if self.debug:
+        if self.debug and t is not None:
+            marked = copy.deepcopy(mat)
+            x, y, _ = t
             if self.color == BarColor.BLUE:
-                cv2.circle(origin, (self.target_last[0], self.target_last[1]), 20, (0, 0, 255), 2, 15)
-                cv2.line(origin, (self.target_last[0] - 40, self.target_last[1]),
-                         (self.target_last[0] + 40, self.target_last[1]), (0, 0, 255), 1)
-                cv2.line(origin, (self.target_last[0], self.target_last[1] - 40),
-                         (self.target_last[0], self.target_last[1] + 40), (0, 0, 255), 1)
-            elif self.color == BarColor.RED:
-                cv2.circle(origin, (self.target_last[0], self.target_last[1]), 20, (255, 0, 0), 2, 15)
-                cv2.line(origin, (self.target_last[0] - 40, self.target_last[1]),
-                         (self.target_last[0] + 40, self.target_last[1]), (255, 0, 0), 1)
-                cv2.line(origin, (self.target_last[0], self.target_last[1] - 40),
-                         (self.target_last[0], self.target_last[1] + 40), (255, 0, 0), 1)
-                # out.write(origin)
-            cv2.imshow('raw_img', origin)
-            set_mouth_callback_show_pix("raw_img", origin)
+                line_color = (0, 0, 255)
+            else:
+                line_color = (255, 0, 0)
+            cv2.circle(marked, (x, y), 20, line_color, 2, 15)
+            cv2.line(marked, (x - 40, y), (x + 40, y), line_color, 1)
+            cv2.line(marked, (x, y - 40), (x, y + 40), line_color, 1)
+            cv2.imshow('target_img', marked)
+            set_mouth_callback_show_pix("target_img", marked)
 
-        return (self.target_last[0], self.target_last[1])
+        return t[0], t[1] if t is not None else None
+
+    # from datetime import datetime
+    # def trace(self, mat):
+    #     origin = copy.deepcopy(mat)  # copy image source
+    #     t_start = datetime.now()  # get starting time
+    #
+    #     # track the targets
+    #     target = np.array([])
+    #     self.distance = TargetDis.NEAR
+    #     if self.color == BarColor.BLUE:
+    #         target = self.track(mat, 80, 2.5, 0.5, 1, 13)
+    #         print("Near: Target: x, y " + str(target))
+    #         if len(target) == 0:
+    #             self.distance = TargetDis.MID
+    #             target = self.track(mat, 80, 0.8, 0.5, 1, 13)
+    #             print("Far: Target: x, y " + str(target))
+    #     elif self.color == BarColor.RED:
+    #         target = self.track(mat, 50, 2, 0.5, 1, 13)
+    #         print("Near: Target: x, y " + str(target))
+    #         if len(target) == 0:
+    #             self.distance = TargetDis.MID
+    #             target = self.track(mat, 50, 0.5, 0.3, 0.6, 13)
+    #             print("Far: Target: x, y " + str(target))
+    #     t_end = datetime.now()  # get ending time
+    #     print('running time: ', t_end - t_start)  # print running time
+    #     if len(target) > 0:
+    #         # MIN_STEP -= 1
+    #         # MIN_STEP = 20 if MIN_STEP < 5 else MIN_STEP
+    #         self.min_step = 20 if self.min_step <= 5 else self.min_step - 1
+    #         # calculate the distance
+    #         dist = np.sqrt((np.power(target[0] - self.target_last[0], 2) +
+    #                         np.power(target[1] - self.target_last[1], 2)))
+    #         if dist > self.min_step:
+    #             self.target_last += ((target[:2] - self.target_last) / dist * self.min_step).astype(np.int32)
+    #         else:
+    #             self.target_last = target[:2]
+    #         if self.debug:
+    #             cv2.circle(origin, (target[0], target[1]), 8, (0, 255, 0), -1)  # draw a circle on the target
+    #     else:
+    #         self.min_step = 50 if self.min_step >= 50 else self.min_step
+    #         # MIN_STEP += 1
+    #         # MIN_STEP = 50 if MIN_STEP > 50 else MIN_STEP
+    #
+    #     if self.debug:
+    #         if self.color == BarColor.BLUE:
+    #             cv2.circle(origin, (self.target_last[0], self.target_last[1]), 20, (0, 0, 255), 2, 15)
+    #             cv2.line(origin, (self.target_last[0] - 40, self.target_last[1]),
+    #                      (self.target_last[0] + 40, self.target_last[1]), (0, 0, 255), 1)
+    #             cv2.line(origin, (self.target_last[0], self.target_last[1] - 40),
+    #                      (self.target_last[0], self.target_last[1] + 40), (0, 0, 255), 1)
+    #         elif self.color == BarColor.RED:
+    #             cv2.circle(origin, (self.target_last[0], self.target_last[1]), 20, (255, 0, 0), 2, 15)
+    #             cv2.line(origin, (self.target_last[0] - 40, self.target_last[1]),
+    #                      (self.target_last[0] + 40, self.target_last[1]), (255, 0, 0), 1)
+    #             cv2.line(origin, (self.target_last[0], self.target_last[1] - 40),
+    #                      (self.target_last[0], self.target_last[1] + 40), (255, 0, 0), 1)
+    #             # out.write(origin)
+    #         cv2.imshow('raw_img', origin)
+    #         set_mouth_callback_show_pix("raw_img", origin)
+    #
+    #     return (self.target_last[0], self.target_last[1])

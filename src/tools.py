@@ -22,10 +22,11 @@ def set_quit():
 
 # A decorator
 def quitable(func):
-    def f(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         signal.signal(signal.SIGINT, quit)
         func(*args, **kwargs)
-    return f
+        cv2.destroyAllWindows()
+    return wrapper
 
 
 def folder(file_dir, file_type):
