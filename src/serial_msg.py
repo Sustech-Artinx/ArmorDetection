@@ -9,17 +9,18 @@ class SerialWriter:
         self.ser.close()
 
     @staticmethod
-    def _to_int16(n):
+    def _to_int16(n: int) -> int:
         if n < 0:
             return 65536 + n
         else:
             return n
 
-    def write(self, delta_yaw, delta_pitch):
+    def write(self, delta_yaw: int, delta_pitch: int):
         """
         Protocol:
         0xFA + length(2 bytes) + d_yaw(2 bytes) + d_pitch(2 bytes) + 0x00(reserved) + 0xFB
         """
+
         delta_yaw = SerialWriter._to_int16(delta_yaw)
         delta_pitch = SerialWriter._to_int16(delta_pitch)
 
