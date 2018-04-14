@@ -26,30 +26,27 @@ class TargetDis(Enum):
 # TODO: Detector for red light bars
 
 class Detector:
-    def __init__(self, color: BarColor, shape: tuple = (480, 360), debug: bool = False):
+    def __init__(self, color: BarColor, shape: tuple = (480, 360), debug = False):
         self.color = color
-        self.debug = debug
-        self.distance = TargetDis.NEAR # for target_old
+        self.debug_imgs = [] if debug else None
 
     def hsv(self, frame):
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
+        if self.color == BarColor.RED:
+            h, s, v = cv2.split(hsv_frame.astype(np.uint16))
+            h += 107
+            h %= 180
+            hsv_frame = cv2.merge((h, s, v)).astype(np.uint8)
+
+            if self.debug_imgs is not None:
+                self.debug_imgs.append(("Red to Blue", cv2.cvtColor(hsv_frame, cv2.COLOR_HSV2BGR)))
+
         # TODO: decide the range of lightness based on histogram
-        if self.color == BarColor.BLUE:
-            lower_light = np.array([90, 0, 215])
-            upper_light = np.array([120, 100, 255])
-            lower_halo  = np.array([90, 100, 185])
-            upper_halo  = np.array([120, 255, 255])
-        else: # self.color == BarColor.RED:
-            lower_light = np.array([0, 0, 215])
-            upper_light = np.array([25, 100, 255])
-            # TODO
-            lower_halo1 = np.array([170, 100, 185])
-            upper_halo1 = np.array([180, 255, 255])
-            lower_halo2 = np.array([0, 100, 185])
-            upper_halo2 = np.array([25, 255, 255])
-            lower_halo = cv2.bitwise_or(lower_halo1, lower_halo2)
-            upper_halo = cv2.bitwise_or(upper_halo1, upper_halo2)
+        lower_light = np.array([90, 0, 215])
+        upper_light = np.array([120, 100, 255])
+        lower_halo  = np.array([90, 100, 185])
+        upper_halo  = np.array([120, 255, 255])
 
         light_area = cv2.inRange(hsv_frame, lower_light, upper_light)
         halo_area = cv2.inRange(hsv_frame, lower_halo, upper_halo)
@@ -119,9 +116,10 @@ class Detector:
         for i in insides:
             nw_x, nw_y = i["northwest"]
             se_x, se_y = i["southeast"]
-            tx, ty = nw_x + np.argmax(light_map[nw_y, nw_x:se_x]), nw_y     # top peak
-            bx, by = nw_x + np.argmax(light_map[se_y-1, nw_x:se_x]), se_y-1     # bottom peak
-            angle = math.atan2(by-ty, tx-bx) / math.pi  # unit: pi rad
+            top_line, bottom_line = light_map[nw_y, nw_x:se_x], light_map[se_y-1, nw_x:se_x]
+            tx, ty = nw_x + np.argmax(top_line), nw_y           # top peak
+            bx, by = nw_x + np.argmax(bottom_line), se_y-1      # bottom peak
+            angle = math.atan2(by-ty, tx-bx) / math.pi          # unit: pi rad
             i["angle"] = angle
 
         return insides, {"northwest": (northwest_x, northwest_y), "southeast": (southeast_x, southeast_y)}
@@ -139,13 +137,13 @@ class Detector:
             width, height = bar["size"]
             square_ratio = height / width
             return 1.5 <= square_ratio < 8
-        # def is_bar_far(bar):
-        #     width, height = bar["size"]
-        #     square_ratio = height / width
-        #     return 1.3 < square_ratio < 4
+        def is_bar_far(bar):
+            width, height = bar["size"]
+            square_ratio = height / width
+            return 0.8 < square_ratio < 2
         selected = list(filter(is_bar_near, big_enough))
-        # if len(selected) < 2:
-        #     selected = list(filter(is_bar_far, big_enough))
+        if len(selected) < 2:
+            selected = list(filter(is_bar_far, big_enough))
 
         vertical_bars = filter(lambda x: abs(x["angle"] - 0.5) < 0.2, selected)
 
@@ -168,6 +166,9 @@ class Detector:
             y2 = bar2["centroid"][1]
             height_base = min((bar1["size"][1], bar2["size"][1]))
             return abs(y1 - y2) / height_base
+
+        def square_ratio(bar1, bar2): # TODO
+            pass
 
         def area(bar1, bar2):
             a1 = bar1["pixels"]
@@ -198,6 +199,9 @@ class Detector:
         return bars[i1], bars[i2]
 
     def target(self, frame):
+        if self.debug_imgs is not None:
+            self.debug_imgs = []
+
         # frame = cv2.blur(frame, ksize=(4, 4))
         frame = cv2.pyrUp(cv2.pyrDown(frame)) # down-sample
         light, halo = self.hsv(frame)
@@ -214,44 +218,28 @@ class Detector:
         else:
             target = None
 
-        # # debug
-        # for each in selected_pair:
-        #     cv2.circle(img=frame, center=each["centroid"], radius=7, color=(0,255,0), thickness=2)
-        # cv2.imshow('Debug', frame)
-
-        if self.debug:
-            show = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            plt.figure("Car Detection Debug")
-
-            plt.subplot(2, 2, 1)
-            plt.title("Original")
-            plt.imshow(show)
-            plt.axis('off')
-
+        if self.debug_imgs is not None:
             if selected_area is not None:
-                cv2.rectangle(halo, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255,
-                              thickness=1)
-                cv2.rectangle(light, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255,
-                              thickness=1)
+                cv2.rectangle(halo, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255, thickness=1)
+                self.debug_imgs.append(("Halo", halo))
+
+                cv2.rectangle(light, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255, thickness=1)
+                self.debug_imgs.append(("Light", light))
+
+            selected = np.copy(frame)
             for each in selected_bars:
-                cv2.circle(img=show, center=each["centroid"], radius=7, color=(0, 255, 0), thickness=2)
+                cv2.circle(img=selected, center=each["centroid"], radius=7, color=(0, 255, 0), thickness=2)
             for each in selected_pair:
-                cv2.circle(img=show, center=each["centroid"], radius=5, color=(255, 0, 0), thickness=2)
+                cv2.circle(img=selected, center=each["centroid"], radius=5, color=(0, 0, 255), thickness=-1)
+            self.debug_imgs.append(("Seleted", selected))
 
-            plt.subplot(2, 2, 2)
-            plt.title("halo")
-            plt.imshow(halo)
-            plt.axis('off')
+            # aimed = np.copy(frame)
+            # if target is not None:
+            #     x, y = target
+            #     aim_color = (0, 255, 0)  # green
+            #     cv2.circle(img=aimed, center=target, radius=18, color=aim_color, thickness=2)
+            #     cv2.line(img=aimed, pt1=(x - 40, y), pt2=(x + 40, y), color=aim_color, thickness=2)
+            #     cv2.line(img=aimed, pt1=(x, y - 40), pt2=(x, y + 40), color=aim_color, thickness=2)
+            # self.debug_imgs.append(("Aimed", aimed))
 
-            plt.subplot(2, 2, 3)
-            plt.title("light")
-            plt.imshow(light)
-            plt.axis('off')
-
-            plt.subplot(2, 2, 4)
-            plt.title("selected")
-            plt.imshow(show)
-            plt.axis('off')
-
-        return target
+        return target, self.debug_imgs

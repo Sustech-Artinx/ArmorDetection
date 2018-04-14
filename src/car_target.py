@@ -79,6 +79,7 @@ class Smoother:
 class CarTargetApp:
     def __init__(self, color: BarColor, debug: bool = False):
         self.detector = Detector(color=color, debug=debug)
+        self.debug = debug
 
     def __del__(self):
         cv2.destroyAllWindows()
@@ -89,23 +90,53 @@ class CarTargetApp:
 
 
 class ImgCarTargetApp(CarTargetApp):
-    def __init__(self, color: BarColor, frame_size: tuple, debug: bool = False):
-        CarTargetApp.__init__(self, color, debug)
+    def __init__(self, folder: str, color: BarColor, frame_size: tuple, ext_name: str = "jpg", debug: bool = False):
+        CarTargetApp.__init__(self, color, debug=debug)
         self.frame_size = frame_size
+        self.folder = folder
+        self.ext_name = ext_name
 
     @quitable
     def run(self): # FIXME: move folder path to constructor
-        file_list = folder("/home/jeeken/Pictures/DMovie", "jpg")
+        file_list = folder(self.folder, self.ext_name)
         for i in file_list:
             print("img_file:", i)
             mat = cv2.resize(cv2.imread(i), self.frame_size)
-            target = self.detector.target(mat)
+
+            plt.figure("Armor Detection")
+
+            count = 1
+            plt.subplot(2, 3, count)
+            plt.title("Original")
+            plt.imshow(cv2.cvtColor(mat, cv2.COLOR_BGR2RGB))
+            plt.axis("off")
+
+            target, debug_imgs = self.detector.target(mat)
             print("target:", target)
+
+            if self.debug:
+                count = 2
+                for title, img in debug_imgs:
+                    plt.subplot(2, 3, count)
+                    plt.title(title)
+                    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if img.ndim == 3 else img)
+                    plt.axis("off")
+                    count += 1
+
+            if target is not None:
+                x, y = target
+                aim_color = (0, 255, 0)  # green
+                cv2.circle(img=mat, center=target, radius=18, color=aim_color, thickness=2)
+                cv2.line(img=mat, pt1=(x - 40, y), pt2=(x + 40, y), color=aim_color, thickness=2)
+                cv2.line(img=mat, pt1=(x, y - 40), pt2=(x, y + 40), color=aim_color, thickness=2)
+            plt.subplot(2, 3, count)
+            plt.title("Aimed")
+            plt.imshow(cv2.cvtColor(mat, cv2.COLOR_BGR2RGB))
+            plt.axis("off")
+
             if plt.waitforbuttonpress():
                 plt.close()
                 break
-            # if cv2.waitKey(0) & 0xFF == ord('q'):
-            #    break
 
 
 class CamCarTargetApp(CarTargetApp):
@@ -157,8 +188,9 @@ class CamCarTargetApp(CarTargetApp):
 
 
 class VideoCarTargetApp(CarTargetApp):
-    def __init__(self, color: BarColor, file: str, frame_size: tuple = (640, 480), debug: bool = False):
+    def __init__(self, file: str, color: BarColor, frame_size: tuple = (640, 480), debug: bool = False):
         CarTargetApp.__init__(self, color, debug)
+        self.color = color
         self.file = file
         self.debug = debug
         self.frame_size = frame_size
@@ -168,30 +200,41 @@ class VideoCarTargetApp(CarTargetApp):
     def run(self):
         # out = cv2.VideoWriter(filename="/home/jeeken/Videos/180_out.mp4", fourcc=cv2.VideoWriter_fourcc(*"XVID"), fps=30.0, frameSize=(640, 480))
         cap = cv2.VideoCapture(self.file)
+        # debug:
+        # cap = cv2.VideoCapture(1)
         while cap.isOpened():
             ok, frame = cap.read()
             if not ok:
                 break
             frame = cv2.resize(frame, self.frame_size)
-            target = self.detector.target(frame)
+
+            target, debug_imgs = self.detector.target(frame)
             target_smoothed = self.smoother.smoothed(target)
+
             print("target:  ", target)
             print("smoothed:", target_smoothed)
             print("--------------------")
 
             cv2.imshow("Original", frame)
+
+            if self.debug:
+                for title, img in debug_imgs:
+                    cv2.imshow(title, img)
+
             if target is not None:
                 cv2.circle(img=frame, center=target, radius=4, color=(0, 255, 0), thickness=-1) # green, -1: filled
-                aim_color = (0, 0, 255)
+                aim_color = (0, 0, 255) if self.color == BarColor.BLUE else (0, 255, 0)
                 x, y = target_smoothed
                 cv2.circle(img=frame, center=target_smoothed, radius=20, color=aim_color, thickness=2) # red circle
                 cv2.line(img=frame, pt1=(x-40, y), pt2=(x+40, y), color=aim_color, thickness=1)
                 cv2.line(img=frame, pt1=(x, y-40), pt2=(x, y+40), color=aim_color, thickness=1)
-            cv2.imshow("Aimed", frame)
+            cv2.imshow("Smoothed", frame)
+
             # out.write(frame)
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
+        # out.release()
         cap.release()
 
 
@@ -201,9 +244,13 @@ if __name__ == "__main__":
 
     # app = CamCarTargetApp(color=BarColor.BLUE, msg=ser, cam_idx=1, frame_size=(480, 360), debug=True)
 
-    # app = ImgCarTargetApp(color=BarColor.BLUE, frame_size=(480, 360), debug=True)
-    # app = ImgCarTargetApp(color=BarColor.RED, frame_size=(480, 360), debug=True)
+    # app = ImgCarTargetApp(color=BarColor.BLUE, folder="/home/jeeken/Pictures/blue",
+    #                       frame_size=(640, 480), ext_name="jpg", debug=True)
+    # app = ImgCarTargetApp(color=BarColor.RED, folder="/home/jeeken/Pictures/red",
+    #                       frame_size=(640, 360), ext_name="jpg", debug=True)
 
-    # edit commented code if you want to debug Video mode
-    app = VideoCarTargetApp(color=BarColor.BLUE, file="/home/jeeken/Videos/live_blue.avi", frame_size=(640, 480), debug=False)
+    app = VideoCarTargetApp(file="/home/jeeken/Videos/live_blue.avi",
+                            color=BarColor.BLUE, frame_size=(640, 480), debug=False)
+    # app = VideoCarTargetApp(file="/home/jeeken/Videos/live_red.avi",
+    #                         color=BarColor.RED, frame_size=(640, 480), debug=False)
     app.run()
