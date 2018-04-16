@@ -80,6 +80,7 @@ class CarTargetApp:
     def __init__(self, color: BarColor, debug: bool = False):
         self.detector = Detector(color=color, debug=debug)
         self.debug = debug
+        self.color = color
 
     def __del__(self):
         cv2.destroyAllWindows()
@@ -87,6 +88,15 @@ class CarTargetApp:
     @quitable
     def run(self):
         pass
+
+    def draw_target(self, img, target):
+        if img.ndim == 2:
+            aim_color = 255
+        else:
+            aim_color = (0, 0, 255) if self.color == BarColor.BLUE else (0, 255, 0)
+        cv2.circle(img=img, center=target, radius=20, color=aim_color, thickness=2)
+        cv2.drawMarker(img=img, position=target, color=aim_color, markerType=cv2.MARKER_CROSS, markerSize=80,
+                       thickness=2)
 
 
 class ImgCarTargetApp(CarTargetApp):
@@ -105,31 +115,28 @@ class ImgCarTargetApp(CarTargetApp):
 
             plt.figure("Armor Detection")
 
+            ROW, COL = 3, 3
             count = 1
-            plt.subplot(2, 3, count)
+            plt.subplot(ROW, COL, count)
             plt.title("Original")
             plt.imshow(cv2.cvtColor(mat, cv2.COLOR_BGR2RGB))
             plt.axis("off")
 
-            target, debug_imgs = self.detector.target(mat)
+            target = self.detector.target(mat)
             print("target:", target)
 
             if self.debug:
                 count = 2
-                for title, img in debug_imgs:
-                    plt.subplot(2, 3, count)
+                for title, img in self.detector.debug_imgs:
+                    plt.subplot(ROW, COL, count)
                     plt.title(title)
                     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if img.ndim == 3 else img)
                     plt.axis("off")
                     count += 1
 
             if target is not None:
-                x, y = target
-                aim_color = (0, 255, 0)  # green
-                cv2.circle(img=mat, center=target, radius=18, color=aim_color, thickness=2)
-                cv2.line(img=mat, pt1=(x - 40, y), pt2=(x + 40, y), color=aim_color, thickness=2)
-                cv2.line(img=mat, pt1=(x, y - 40), pt2=(x, y + 40), color=aim_color, thickness=2)
-            plt.subplot(2, 3, count)
+                self.draw_target(img=mat, target=target)
+            plt.subplot(ROW, COL, count)
             plt.title("Aimed")
             plt.imshow(cv2.cvtColor(mat, cv2.COLOR_BGR2RGB))
             plt.axis("off")
@@ -208,7 +215,8 @@ class VideoCarTargetApp(CarTargetApp):
                 break
             frame = cv2.resize(frame, self.frame_size)
 
-            target, debug_imgs = self.detector.target(frame)
+            target = self.detector.target(frame)
+            # target, debug_imgs = self.detector.target(frame)
             target_smoothed = self.smoother.smoothed(target)
 
             print("target:  ", target)
@@ -218,16 +226,12 @@ class VideoCarTargetApp(CarTargetApp):
             cv2.imshow("Original", frame)
 
             if self.debug:
-                for title, img in debug_imgs:
+                for title, img in self.detector.debug_imgs:
                     cv2.imshow(title, img)
 
             if target is not None:
                 cv2.circle(img=frame, center=target, radius=4, color=(0, 255, 0), thickness=-1) # green, -1: filled
-                aim_color = (0, 0, 255) if self.color == BarColor.BLUE else (0, 255, 0)
-                x, y = target_smoothed
-                cv2.circle(img=frame, center=target_smoothed, radius=20, color=aim_color, thickness=2) # red circle
-                cv2.line(img=frame, pt1=(x-40, y), pt2=(x+40, y), color=aim_color, thickness=1)
-                cv2.line(img=frame, pt1=(x, y-40), pt2=(x, y+40), color=aim_color, thickness=1)
+                self.draw_target(img=frame, target=target_smoothed)
             cv2.imshow("Smoothed", frame)
 
             # out.write(frame)
@@ -250,7 +254,7 @@ if __name__ == "__main__":
     #                       frame_size=(640, 360), ext_name="jpg", debug=True)
 
     app = VideoCarTargetApp(file="/home/jeeken/Videos/live_blue.avi",
-                            color=BarColor.BLUE, frame_size=(640, 480), debug=False)
+                            color=BarColor.BLUE, frame_size=(640, 480), debug=True)
     # app = VideoCarTargetApp(file="/home/jeeken/Videos/live_red.avi",
     #                         color=BarColor.RED, frame_size=(640, 480), debug=False)
     app.run()

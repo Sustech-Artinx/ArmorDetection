@@ -5,8 +5,16 @@
 import cv2
 import math
 import numpy as np
-from matplotlib import pyplot as plt
 from enum import Enum
+from random import randint
+
+
+# class BgrColor(Enum):
+#     RED = (0, 0, 255)
+#     BLUE = (255, 0, 0)
+#     GREEN = (0, 255, 0)
+#     YELLOW = (0, 255, 255)
+#     PURPLE = (255, 0, 255)
 
 
 class BarColor(Enum):
@@ -23,12 +31,24 @@ class TargetDis(Enum):
     ULTRA = 3
 
 
-# TODO: Detector for red light bars
-
 class Detector:
+    # TODO: remove shape from self.__init__
     def __init__(self, color: BarColor, shape: tuple = (480, 360), debug = False):
         self.color = color
-        self.debug_imgs = [] if debug else None
+        self.refresh(frame=None, debug=debug)
+
+    def refresh(self, frame, debug=None):
+        self.frame = frame
+        if debug is not None:
+            self.debug = debug
+        self.debug_imgs = []
+
+    def add_debug_img(self, title: str, img):
+        if self.debug:
+            if callable(img):
+                self.debug_imgs.append((title, img()))
+            else:
+                self.debug_imgs.append((title, img))
 
     def hsv(self, frame):
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -38,12 +58,11 @@ class Detector:
             h += 107
             h %= 180
             hsv_frame = cv2.merge((h, s, v)).astype(np.uint8)
-
-            if self.debug_imgs is not None:
-                self.debug_imgs.append(("Red to Blue", cv2.cvtColor(hsv_frame, cv2.COLOR_HSV2BGR)))
+            self.add_debug_img("Red to Blue", cv2.cvtColor(hsv_frame, cv2.COLOR_HSV2BGR))
 
         # TODO: decide the range of lightness based on histogram
-        lower_light = np.array([90, 0, 215])
+        # lower_light = np.array([90, 0, 215])
+        lower_light = np.array([90, 0, 210])
         upper_light = np.array([120, 100, 255])
         lower_halo  = np.array([90, 100, 185])
         upper_halo  = np.array([120, 255, 255])
@@ -54,6 +73,7 @@ class Detector:
 
     @staticmethod
     def get_connected_components_info(frame):
+        # cpn: component
         cpn_count, label_map, cpn_info, centroids = \
             cv2.connectedComponentsWithStats(image=frame, connectivity=4, ltype=cv2.CV_32S)
 
@@ -198,13 +218,42 @@ class Detector:
         i1, i2 = winner["indices"]
         return bars[i1], bars[i2]
 
+    # NEW!
+    def get_lights(self, binary_img):
+        height, width = binary_img.shape
+
+        # https://docs.opencv.org/2.4/modules/imgproc/doc/structural_analysis_and_shape_descriptors.html?highlight=findcontours#findcontours
+        img, contours, hierarchy = cv2.findContours(image=binary_img, mode=cv2.RETR_EXTERNAL,
+                                                    method=cv2.CHAIN_APPROX_SIMPLE)
+        # rectangle: (centroid, shape, angle)
+        rectangles = [cv2.minAreaRect(i) for i in contours if len(i) * 60 > width]  # omit small ones
+        # rectangles = [cv2.fitEllipse(i) for i in contours if len(i) * 40 > width]
+
+        def get_img_lights_recs_as_elps():
+            show_lights = np.copy(self.frame)
+            for centroid, shape, angle in rectangles:
+                to_int_point = lambda x, y: (round(x), round(y))
+                rand_color = (randint(40, 230), randint(40, 230), randint(40, 230))
+                cv2.ellipse(img=show_lights, center=to_int_point(*centroid), axes=to_int_point(*shape), angle=angle,
+                            startAngle=0, endAngle=360, color=rand_color, thickness=2)
+            return show_lights
+        self.add_debug_img("Light_rec", get_img_lights_recs_as_elps)
+
+        return rectangles
+
+    def halo_circle(self, binary_img):
+        # TODO
+        pass
+
     def target(self, frame):
-        if self.debug_imgs is not None:
-            self.debug_imgs = []
+        self.refresh(frame)
 
         # frame = cv2.blur(frame, ksize=(4, 4))
         frame = cv2.pyrUp(cv2.pyrDown(frame)) # down-sample
         light, halo = self.hsv(frame)
+
+        lights = self.get_lights(light)
+
         lights_in_halo, selected_area = Detector.select_lights_in_halo(light, halo)
         selected_bars = Detector.select_valid_bars(lights_in_halo)
         selected_pair = Detector.select_pair(selected_bars)
@@ -218,28 +267,23 @@ class Detector:
         else:
             target = None
 
-        if self.debug_imgs is not None:
-            if selected_area is not None:
-                cv2.rectangle(halo, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255, thickness=1)
-                self.debug_imgs.append(("Halo", halo))
+        def get_img_selected_halo():
+            cv2.rectangle(halo, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255, thickness=1)
+            return halo
+        def get_img_selected_light():
+            cv2.rectangle(light, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255, thickness=1)
+            return light
+        if selected_area is not None:
+            self.add_debug_img("Halo", get_img_selected_halo)
+            self.add_debug_img("Light", get_img_selected_light)
 
-                cv2.rectangle(light, pt1=selected_area["northwest"], pt2=selected_area["southeast"], color=255, thickness=1)
-                self.debug_imgs.append(("Light", light))
-
-            selected = np.copy(frame)
+        def get_img_selected():
+            selected = np.copy(self.frame)
             for each in selected_bars:
-                cv2.circle(img=selected, center=each["centroid"], radius=7, color=(0, 255, 0), thickness=2)
+                cv2.drawMarker(img=selected, position=each["centroid"], color=(0, 255, 255), markerSize=25, thickness=2)
             for each in selected_pair:
                 cv2.circle(img=selected, center=each["centroid"], radius=5, color=(0, 0, 255), thickness=-1)
-            self.debug_imgs.append(("Seleted", selected))
+            return selected
+        self.add_debug_img("Selected", get_img_selected)
 
-            # aimed = np.copy(frame)
-            # if target is not None:
-            #     x, y = target
-            #     aim_color = (0, 255, 0)  # green
-            #     cv2.circle(img=aimed, center=target, radius=18, color=aim_color, thickness=2)
-            #     cv2.line(img=aimed, pt1=(x - 40, y), pt2=(x + 40, y), color=aim_color, thickness=2)
-            #     cv2.line(img=aimed, pt1=(x, y - 40), pt2=(x, y + 40), color=aim_color, thickness=2)
-            # self.debug_imgs.append(("Aimed", aimed))
-
-        return target, self.debug_imgs
+        return target
