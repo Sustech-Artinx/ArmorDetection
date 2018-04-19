@@ -50,7 +50,7 @@ class Smoother:
         width, height = shape
         self.last_target = None
         self.invalid_count = 0
-        self.far_enough = math.sqrt(width*width + height*height) / 12
+        self.far_enough = math.sqrt(width*width + height*height) / 12  # diagonal length / 12
         self.count_threshold = 5
 
     def smoothed(self, new_target):
@@ -115,7 +115,7 @@ class ImgCarTargetApp(CarTargetApp):
 
             plt.figure("Armor Detection")
 
-            ROW, COL = 3, 3
+            ROW, COL = 2, 4
             count = 1
             plt.subplot(ROW, COL, count)
             plt.title("Original")
@@ -124,6 +124,7 @@ class ImgCarTargetApp(CarTargetApp):
 
             target = self.detector.target(mat)
             print("target:", target)
+            print("------------------------------------")
 
             if self.debug:
                 count = 2
@@ -254,7 +255,7 @@ if __name__ == "__main__":
     #                       frame_size=(640, 360), ext_name="jpg", debug=True)
 
     app = VideoCarTargetApp(file="/home/jeeken/Videos/live_blue.avi",
-                            color=BarColor.BLUE, frame_size=(640, 480), debug=True)
-    # app = VideoCarTargetApp(file="/home/jeeken/Videos/live_red.avi",
-    #                         color=BarColor.RED, frame_size=(640, 480), debug=False)
+                            color=BarColor.BLUE, frame_size=(640, 480), debug=False)
+    # app = VideoCarTargetApp(file="/home/jeeken/Videos/red.avi",
+    #                         color=BarColor.RED, frame_size=(640, 480), debug=True)
     app.run()
