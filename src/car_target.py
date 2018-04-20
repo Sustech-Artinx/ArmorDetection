@@ -12,38 +12,6 @@ from detector import BarColor, Detector
 from serial_msg import SerialWriter
 
 # TODO: (x, y) -> (yaw, pitch)
-#
-# def get_converter(weight: int, height: int):
-#     def f(n: float): # an odd function
-#         return math.log(n + 1) if n >= 0 else math.log(1 - n)
-#     def converter(x: int, y: int) -> tuple: # TODO
-#         dx = x - weight // 2
-#         dy = y - height // 2
-#         return int(f(dx) * 8), int(f(dy) * 6)
-#     return converter
-#
-# class Tracer:
-#     """
-#     (x, y) -> (delta_yaw, delta_pitch)
-#     and keep movement smooth
-#     """
-#     def __init__(self, width, height):
-#         self.step = 5
-#         self.central_x = width >> 1
-#         self.central_y = height >> 1
-#
-#     def convert(self, target: tuple) -> tuple:
-#         if target is not None:
-#             self.step = (self.step - 1) if self.step > 5 else 5
-#             x, y = target
-#             dx = x - self.central_x
-#             dy = y - self.central_y
-#             eta = self.step / math.sqrt(dx * dx + dy * dy)
-#             return (-int(dx * eta), int(dy * eta)) if eta < 1 else target
-#         else:
-#             self.step = self.step + 1 if self.step < 50 else 50
-#             return 0, 0
-
 
 class Smoother:
     def __init__(self, shape):
