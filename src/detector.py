@@ -81,25 +81,38 @@ class Detector:
         upper_light = np.array([120, 130, 255])
         lower_halo  = np.array([90, 100, 185])
         upper_halo  = np.array([120, 255, 255])
+        # lower_light = np.array([90, 0, 185])
+        # upper_light = np.array([120, 230, 255])
+        # lower_halo  = np.array([90, 30, 160])
+        # upper_halo  = np.array([120, 255, 255])
 
         light_area = cv2.inRange(hsv_frame, lower_light, upper_light)
         halo_area = cv2.inRange(hsv_frame, lower_halo, upper_halo)
         return light_area, halo_area
 
     def get_lights(self, binary_img: np.ndarray):
-        _, width = binary_img.shape
         # https://docs.opencv.org/2.4/modules/imgproc/doc/structural_analysis_and_shape_descriptors.html?highlight=findcontours#findcontours
         img, contours, hierarchy = cv2.findContours(binary_img, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
-        min_width = width // 60
-        rectangles_info = [cv2.minAreaRect(i) for i in contours if len(i) > min_width]  # filter (omit small ones) and map
-        # rectangles_info = [cv2.fitEllipse(i) for i in contours if len(i) > min_width]
-        return rectangles_info
+
+        very_small_area = binary_img.shape[1] / 30  # img_width / 30
+
+        def not_very_small(rec):
+            w, h = rec[1]
+            return w * h > very_small_area
+        return filter(not_very_small, map(cv2.minAreaRect, contours))
 
     def halo_circle(self, binary_img: np.ndarray):
         height, width = binary_img.shape
         img, contours, hierarchy = cv2.findContours(binary_img, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
-        min_width = width // 60
-        selected_contours = [i for i in contours if len(i) > min_width]  # small contours omitted
+
+        very_small_area = width / 30
+        def not_very_small(contour):
+            points_x, points_y = cv2.split(contour)
+            w = np.amax(points_x) - np.amin(points_x)
+            h = np.amax(points_y) - np.amin(points_y)
+            return w * h > very_small_area
+        selected_contours = [i for i in contours if not_very_small(i)]
+
         if len(selected_contours) > 0:
             combined_halo_points = np.concatenate(selected_contours)
             original_center, original_radius = cv2.minEnclosingCircle(combined_halo_points)
@@ -113,7 +126,7 @@ class Detector:
                 radius = round(original_radius * 1.8)
             else:
                 radius = round(width / 15)
-        else: # no valid halo, consider the central area
+        else:  # no valid halo, consider the central area
             center = width // 2, height // 2
             radius = width // 3
         return center, radius
@@ -123,12 +136,23 @@ class Detector:
         def is_inside(light):
             (xl, yl), shape, angle = light
             return (xl-x)**2 + (yl-y)**2 < halo_radius**2
-        return filter(is_inside, lights)
+        # return filter(is_inside, lights)
+        lights_inside = list(filter(is_inside, lights))
+
+        # debug
+        def get_img_lights_inside():
+            mat = np.copy(self.frame)
+            for center, shape, angle in lights_inside:
+                cv2.ellipse(mat, center=round_point(center), axes=round_point(shape), angle=angle,
+                            startAngle=0, endAngle=360, color=BGR_GREEN, thickness=2)
+            return mat
+        self.add_debug_img("all lights inside", get_img_lights_inside)
+
+        return lights_inside
 
     def select_vertical_lights(self, lights):
         def normalize_angle(rec):
-            center, shape, angle = rec
-            w, h = shape
+            center, (w, h), angle = rec
             if w > h:
                 return center, (h, w), angle+90
             else:
@@ -136,7 +160,7 @@ class Detector:
 
         def is_vertical(rec):
             center, shape, angle = rec
-            return -20 < angle < 20
+            return -25 < angle < 25
 
         angle_normalized_lights = map(normalize_angle, lights)
         vertical_lights = [i for i in angle_normalized_lights if is_vertical(i)]
@@ -148,7 +172,7 @@ class Detector:
                 center, shape, angle = i
                 rand_color = (randint(40, 230), randint(40, 255), randint(40, 255))
                 cv2.ellipse(show_lights, center=round_point(center), axes=round_point(shape), angle=angle,
-                            startAngle=0, endAngle=360, color=rand_color, thickness=2)
+                            startAngle=0, endAngle=360, color=BGR_GREEN, thickness=2)
             return show_lights
         self.add_debug_img("Vertical Lights", get_img_vertical_lights)
         return vertical_lights
@@ -164,19 +188,23 @@ class Detector:
 
         def parallel(light1, light2):
             angle1, angle2 = light1[2], light2[2]
-            return abs(angle1 - angle2) / 20
+            return abs(angle1 - angle2) / 15
 
-        def size_similarity(light1, light2):
+        def shape_similarity(light1, light2):
             (w1, h1), (w2, h2) = light1[1], light2[1]
-            area1, area2 = w1 * h1, w2 * h2
-            min_size = area1 if area1 < area2 else area2
-            return abs(area1 - area2) / min_size
+            min_width = np.minimum(w1, w2)
+            min_height = np.minimum(h1, h2)
+            return abs(w1-w2)/min_width + 0.5*abs(h1-h2)/min_height
+
+            # area1, area2 = w1 * h1, w2 * h2
+            # min_size = area1 if area1 < area2 else area2
+            # return abs(area1 - area2) / min_size
 
         def square_ratio(light1, light2):
             (x1, y1), (w1, h1), angle1 = light1
             (x2, y2), (w2, h2), angle2 = light2
             ratio = 2 * math.sqrt((x1-x2)**2 + (y1-y2)**2) / (h1+h2)
-            return abs(ratio - 2.4) ** 2 if ratio > 0.85 else 1e9
+            return abs(ratio - 2.5) ** 2 if ratio > 0.85 else 1e9
 
         def y_dis(light1, light2):
             (x1, y1), shape1, angle1 = light1
@@ -187,29 +215,30 @@ class Detector:
         def judge(pair):
             i1, i2 = pair
             bar1, bar2 = lights[i1], lights[i2]
-            policy = [(square_ratio, 5), (y_dis, 18), (size_similarity, 1), (parallel, 1.2)]  # [(func, coefficient),...]
-            return sum((func(bar1, bar2) * coefficient for func, coefficient in policy))  # weighted sum
+            policy = [(square_ratio, 5), (y_dis, 20), (shape_similarity, 3), (parallel, 1.2)]  # [(func, coefficient),...]
+            return sum([func(bar1, bar2) * coefficient for func, coefficient in policy])  # weighted sum
 
         judge_results = [(pair, judge(pair)) for pair in pairs]
         (i1, i2), winner_score = min(judge_results, key=lambda x: x[1])
 
-        if winner_score > 5:
+        if winner_score > 7:
             return None
 
+        # debug
         def get_img_selected_pair():
             selected_pair_show = np.copy(self.frame)
             l1, l2 = lights[i1], lights[i2]
             # self.debug_print("l1:", l1)
             # self.debug_print("l2:", l2)
-            # self.debug_print("score:", winner_score)
             # self.debug_print("parallel:", 1.2 * parallel(l1, l2))
-            # self.debug_print("size_similarity:", size_similarity(l1, l2))
+            # self.debug_print("shape_similarity:", 5 * size_similarity(l1, l2))
             # self.debug_print("square_ratio:", 5 * square_ratio(l1, l2))
-            # self.debug_print("y_dis:", 18 * y_dis(l1, l2))
+            # self.debug_print("y_dis:", 20 * y_dis(l1, l2))
+            self.debug_print("score:", winner_score)
             c1, s1, a1 = l1
             c2, s2, a2 = l2
-            cv2.drawMarker(selected_pair_show, position=round_point(c1), color=BGR_YELLOW, markerSize=15, thickness=2)
-            cv2.drawMarker(selected_pair_show, position=round_point(c2), color=BGR_YELLOW, markerSize=15, thickness=2)
+            cv2.drawMarker(selected_pair_show, position=round_point(c1), color=BGR_GREEN, markerSize=15, thickness=2)
+            cv2.drawMarker(selected_pair_show, position=round_point(c2), color=BGR_GREEN, markerSize=15, thickness=2)
             return selected_pair_show
         self.add_debug_img("Selected Pair", get_img_selected_pair)
 
@@ -227,6 +256,7 @@ class Detector:
         halo_center, halo_radius = self.halo_circle(halo)
         lights_info = self.get_lights(light)
 
+        # debug
         # only draw on light/halo after info got, or draw on a copied mat
         def get_img_halo():
             cv2.circle(img=halo, center=halo_center, radius=halo_radius, color=255, thickness=2)

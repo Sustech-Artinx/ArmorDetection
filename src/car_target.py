@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-__date__ = '2018/04/06'
 
 import cv2
 import math
@@ -77,11 +76,12 @@ class ImgCarTargetApp(CarTargetApp):
     @quitable
     def run(self): # FIXME: move folder path to constructor
         file_list = folder(self.folder, self.ext_name)
+        plt.figure("Armor Detection")
         for i in file_list:
             print("img_file:", i)
             mat = cv2.resize(cv2.imread(i), self.frame_size)
 
-            plt.figure("Armor Detection")
+            plt.clf()
 
             ROW, COL = 2, 4
             count = 1
@@ -219,11 +219,11 @@ if __name__ == "__main__":
 
     # app = ImgCarTargetApp(color=BarColor.BLUE, folder="/home/jeeken/Pictures/blue",
     #                       frame_size=(640, 480), ext_name="jpg", debug=True)
-    # app = ImgCarTargetApp(color=BarColor.RED, folder="/home/jeeken/Pictures/red",
-    #                       frame_size=(640, 360), ext_name="jpg", debug=True)
+    # app = ImgCarTargetApp(color=BarColor.RED, folder="/home/jeeken/Pictures/red_dark",
+    #                       frame_size=(640, 480), ext_name="jpg", debug=True)
 
     app = VideoCarTargetApp(file="/home/jeeken/Videos/live_blue.avi",
                             color=BarColor.BLUE, frame_size=(640, 480), debug=False)
     # app = VideoCarTargetApp(file="/home/jeeken/Videos/red.avi",
-    #                         color=BarColor.RED, frame_size=(640, 480), debug=True)
+    #                         color=BarColor.RED, frame_size=(640, 480), debug=False)
     app.run()
