@@ -55,6 +55,7 @@ namespace ArmorDetection {
 
 } // namespace ArmorDetection
 
+using ArmorDetection::ArmorDetectionApp;
 using ArmorDetection::ImgArmorDetectionApp;
 using ArmorDetection::VideoArmorDetectionApp;
 using ArmorDetection::BarColor;

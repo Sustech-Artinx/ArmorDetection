@@ -38,24 +38,20 @@ bool Detector::target(const Mat &frame, Point &targetCenter) {
 
 void Detector::hsv(const Mat &frame, Mat &lightArea, Mat &haloArea) {
     Mat hsvFrame;
-    cv::cvtColor(frame, hsvFrame, cv::COLOR_BGR2HSV);
-
-    if (color == BarColor::RED) {
-        Mat hsvSpace[3];
-        cv::split(hsvFrame, hsvSpace);
-        Mat &h = hsvSpace[0];
-        h += 107;
-        h -= (h / 180) * 180;
-        cv::merge(hsvSpace, 3, hsvFrame);
-        addDebugImg("Red2Blue", hsvFrame);
+    if (color == BarColor::BLUE) {
+        cv::cvtColor(frame, hsvFrame, cv::COLOR_BGR2HSV);
+        Scalar lowerBlueLight(90, 0, 200), upperBlueLight(120, 180, 255);
+        Scalar lowerBlueHalo(90, 120, 185), upperBlueHalo(120, 255, 255);
+        cv::inRange(hsvFrame, lowerBlueLight, upperBlueLight, lightArea);
+        cv::inRange(hsvFrame, lowerBlueHalo, upperBlueHalo, haloArea);
+    } else { // For BarColor::RED
+        // cheat openCV: swap Red and Blue channels implicitly
+        cv::cvtColor(frame, hsvFrame, cv::COLOR_RGB2HSV);
+        Scalar lowerBlueLight(100, 0, 200), upperBlueLight(130, 180, 255);
+        Scalar lowerBlueHalo(100, 120, 185), upperBlueHalo(130, 255, 255);
+        cv::inRange(hsvFrame, lowerBlueLight, upperBlueLight, lightArea);
+        cv::inRange(hsvFrame, lowerBlueHalo, upperBlueHalo, haloArea);
     }
-
-    unsigned char lowerLight[3] = {90, 0, 200};
-    unsigned char upperLight[3] = {120, 180, 255};
-    unsigned char lowerHalo[3] = {90, 120, 185};
-    unsigned char upperHalo[3] = {120, 255, 255};
-    cv::inRange(hsvFrame, Mat(1, 3, CV_8UC1, lowerLight), Mat(1, 3, CV_8UC1, upperLight), lightArea);
-    cv::inRange(hsvFrame, Mat(1, 3, CV_8UC1, lowerHalo), Mat(1, 3, CV_8UC1, upperHalo), haloArea);
 }
 
 

@@ -72,7 +72,7 @@ void VideoArmorDetectionApp::run() {
                 cv::imshow(std::get<0>(debugInfo), std::get<1>(debugInfo));
 
         if (hasTarget) {
-            std::cout << "Target:   " << target << std::endl;
+            std::cout << "Target:       " << target << std::endl;
             cv::circle(frame, target, 4, MarkerBgrColor::GREEN, -1);
         } else {
             std::cout << "No Target" << std::endl;
@@ -81,11 +81,11 @@ void VideoArmorDetectionApp::run() {
         bool hasValidTarget = smoother.smooth(hasTarget, target);
         if (hasValidTarget) {
             ArmorDetectionApp::drawTarget(frame, target);
-            std::cout << "Smoothed: " << target << std::endl;
+            std::cout << "Valid Target: " << target << std::endl;
         } else {
-            std::cout << "No Smoothed" << std::endl;
+            std::cout << "No Valid Target" << std::endl;
         }
-        std::cout << "--------------------" << std::endl;
+        std::cout << "------------------------" << std::endl;
 
         cv::imshow("Aimed", frame);
 
