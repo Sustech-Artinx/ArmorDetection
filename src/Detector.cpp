@@ -79,8 +79,8 @@ std::tuple<Point, float> Detector::haloCircle(Mat &binaryImg) {
         Mat xy[2];
         cv::split(contour, xy);
         double xMin, xMax, yMin, yMax;
-        cv::minMaxIdx(xy[0], &xMin, &xMax);
-        cv::minMaxIdx(xy[1], &yMin, &yMax);
+        cv::minMaxLoc(xy[0], &xMin, &xMax);
+        cv::minMaxLoc(xy[1], &yMin, &yMax);
         return (xMax - xMin) * (yMax - yMin) > verySmallArea;
     });
 
