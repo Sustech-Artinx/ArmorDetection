@@ -39,7 +39,7 @@ void ImgArmorDetectionApp::run() {
         cv::imshow("Aimed", img);
 
         if (cv::waitKey() == 'q') {
-            cv::destroyAllWindows();
+            std::cout << "quit..." << std::endl;
             break;
         }
     }

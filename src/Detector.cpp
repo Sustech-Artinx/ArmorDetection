@@ -40,14 +40,14 @@ void Detector::hsv(const Mat &frame, Mat &lightArea, Mat &haloArea) {
     Mat hsvFrame;
     if (color == BarColor::BLUE) {
         cv::cvtColor(frame, hsvFrame, cv::COLOR_BGR2HSV);
-        Scalar lowerBlueLight(90, 0, 200), upperBlueLight(120, 180, 255);
+        Scalar lowerBlueLight(90, 0, 200), upperBlueLight(120, 140, 255);
         Scalar lowerBlueHalo(90, 120, 185), upperBlueHalo(120, 255, 255);
         cv::inRange(hsvFrame, lowerBlueLight, upperBlueLight, lightArea);
         cv::inRange(hsvFrame, lowerBlueHalo, upperBlueHalo, haloArea);
     } else { // For BarColor::RED
         // cheat openCV: swap Red and Blue channels implicitly
         cv::cvtColor(frame, hsvFrame, cv::COLOR_RGB2HSV);
-        Scalar lowerBlueLight(100, 0, 200), upperBlueLight(130, 180, 255);
+        Scalar lowerBlueLight(100, 0, 200), upperBlueLight(130, 150, 255);
         Scalar lowerBlueHalo(100, 120, 185), upperBlueHalo(130, 255, 255);
         cv::inRange(hsvFrame, lowerBlueLight, upperBlueLight, lightArea);
         cv::inRange(hsvFrame, lowerBlueHalo, upperBlueHalo, haloArea);
@@ -175,7 +175,7 @@ float squareRatio(RotatedRect light1, RotatedRect light2) {
 float yDis(RotatedRect light1, RotatedRect light2) {
     float y1 = light1.center.y, y2 = light2.center.y;
     // FIXME in python: y coordinates may be negetive
-    return std::fabs((y1 - y2) / std::min(y1, y2));
+    return std::fabs((y1 - y2) / std::min(light1.size.height, light2.size.height));
 };
 
 bool Detector::getArmor(const std::forward_list<RotatedRect> &lights, Point &target) {
@@ -193,7 +193,7 @@ bool Detector::getArmor(const std::forward_list<RotatedRect> &lights, Point &tar
         for (size_t j = i + 1; j < jEnd; ++j) {
             auto &l1 = candidates[i], &l2 = candidates[j];
             float score = squareRatio(l1, l2) * 5.0f
-                          + yDis(l1, l2) * 20.0f
+                          + yDis(l1, l2) * 8.0f
                           + shapeSimilarity(l1, l2) * 3.0f
                           + parallel(l1, l2) * 1.2f;
             *(p++) = std::make_tuple(score, i, j);

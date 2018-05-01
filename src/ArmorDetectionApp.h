@@ -13,9 +13,7 @@ namespace ArmorDetection {
                   color(color),
                   debug(debug) {}
 
-        virtual ~ArmorDetectionApp() {
-            cv::destroyAllWindows();
-        }
+        virtual ~ArmorDetectionApp() {}
 
         virtual void run() = 0;
 
