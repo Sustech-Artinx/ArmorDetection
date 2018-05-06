@@ -1,31 +1,35 @@
+#include "ArmorDetectionApp.h"
 #include <iostream>
 #include <memory>
-#include "ArmorDetectionApp.h"
 #include <tclap/CmdLine.h>
 
 typedef std::unique_ptr<ArmorDetectionApp> Ptr;
+
 using namespace TCLAP;
+using std::string;
+using std::vector;
 
 int main(int argc, const char **argv) {
     CmdLine cmd("Armor Detection, Artinx CV 2018", ' ', " C++ v0.2");
-    ValueArg<std::string> imgPathArg("i", "img", "Directory of images folder", false,
-                                     "./img/", "/path/to/images/folder");
-    ValueArg<std::string> videoPathArg("v", "video", "Path of video file", false,
-                                       "armor.mp4", "/path/to/video");
-    cmd.xorAdd(imgPathArg, videoPathArg);
-    ValueArg<char> colorArg("c", "color", "Color of armor, 'b' for blue, 'r' for red", true, 'b', "color", cmd);
+
+    ValueArg<string> colorArg("c", "color", "Color of armor", true, "b", "color", cmd);
     SwitchArg debugArg("d", "debug", "Provide debug information", cmd, false);
 
-    Ptr app;
+    ValueArg<string> imgPathArg("i", "img", "Directory of images folder", true, "./img/", "/path/to/images/folder");
+    ValueArg<string> videoPathArg("v", "video", "Path of video file", true, "armor.mp4", "/path/to/video");
+    ValueArg<int> cameraIdxArg("l", "live", "Camera index", true, 0, "index");
+    vector<Arg*> modeArgs = { &imgPathArg, &videoPathArg, &cameraIdxArg };
+    cmd.xorAdd(modeArgs);
 
+    Ptr app;
     try {
         cmd.parse(argc, argv);
 
-        char color = colorArg.getValue();
+        string& color = colorArg.getValue();
         BarColor armorColor;
-        if (color == 'r')
+        if (color == "r" || color == "red" || color == "RED")
             armorColor = BarColor::RED;
-        else if (color == 'b')
+        else if (color == "b" || color == "blue" || color == "BLUE")
             armorColor = BarColor::BLUE;
         else
             throw ArgException("invalid color", "c");
@@ -43,6 +47,13 @@ int main(int argc, const char **argv) {
                     cv::Size(640, 480),
                     imgPathArg.getValue(),
                     "jpg",  // TODO
+                    debugArg.getValue()
+            ));
+        } else if (cameraIdxArg.isSet()) {
+            app = Ptr(new LiveArmorDetectionApp(
+                    armorColor,
+                    cv::Size(640, 480),
+                    cameraIdxArg.getValue(),
                     debugArg.getValue()
             ));
         }

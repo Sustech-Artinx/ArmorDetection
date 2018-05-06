@@ -20,7 +20,6 @@ ImgArmorDetectionApp::ImgArmorDetectionApp(BarColor color, const Size &frameSize
           frameSize(frameSize),
           files(utils::getFilesFromFolder(folder, ext)) {}
 
-
 void ImgArmorDetectionApp::run() {
     for (string &filename: files) {
         std::cout << "Image: " << filename << std::endl;
@@ -55,9 +54,52 @@ VideoArmorDetectionApp::VideoArmorDetectionApp(BarColor color, const Size &frame
         throw std::invalid_argument("The file does not exists!");
 }
 
-
 void VideoArmorDetectionApp::run() {
     auto cap = cv::VideoCapture(file);
+    while (cap.isOpened()) {
+        Mat frame;
+        if (!cap.read(frame)) break;
+        cv::resize(frame, frame, frameSize);
+        cv::imshow("Original", frame);
+
+        Point target;
+        bool hasTarget = detector.target(frame, target);
+
+        if (debug)
+            for (auto &debugInfo: detector.getDebugImgs())
+                cv::imshow(std::get<0>(debugInfo), std::get<1>(debugInfo));
+
+        if (hasTarget) {
+            std::cout << "Target:       " << target << std::endl;
+            cv::circle(frame, target, 4, MarkerBgrColor::GREEN, -1);
+        } else {
+            std::cout << "No Target" << std::endl;
+        }
+
+        bool hasValidTarget = smoother.smooth(hasTarget, target);
+        if (hasValidTarget) {
+            ArmorDetectionApp::drawTarget(frame, target);
+            std::cout << "Valid Target: " << target << std::endl;
+        } else {
+            std::cout << "No Valid Target" << std::endl;
+        }
+        std::cout << "------------------------" << std::endl;
+
+        cv::imshow("Aimed", frame);
+
+        if (cv::waitKey(1) == 'q') break;
+    }
+}
+
+
+LiveArmorDetectionApp::LiveArmorDetectionApp(BarColor color, const Size &frameSize, int cameraIdx, bool debug)
+        : ArmorDetectionApp(color, debug),
+          frameSize(frameSize),
+          cameraIdx(cameraIdx),
+          smoother(frameSize) {}
+
+void LiveArmorDetectionApp::run() {
+    auto cap = cv::VideoCapture(cameraIdx);
     while (cap.isOpened()) {
         Mat frame;
         if (!cap.read(frame)) break;

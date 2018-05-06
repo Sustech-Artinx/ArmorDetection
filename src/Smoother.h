@@ -23,7 +23,7 @@ namespace ArmorDetection {
 
         const float farEnough;
         RecentPointsQueue recentPoints;
-        static const int CNT_THRESHOLD = 6;
+        static const int CNT_THRESHOLD = 5;
     };
 
 }

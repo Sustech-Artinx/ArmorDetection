@@ -51,11 +51,24 @@ namespace ArmorDetection {
         Smoother smoother;
     };
 
+
+    class LiveArmorDetectionApp final: public ArmorDetectionApp {
+    public:
+        LiveArmorDetectionApp(BarColor color, const Size &frameSize, int cameraIdx, bool debug = false);
+        void run() override;
+
+    private:
+        Size frameSize;
+        int cameraIdx;
+        Smoother smoother;
+    };
+
 } // namespace ArmorDetection
 
 using ArmorDetection::ArmorDetectionApp;
 using ArmorDetection::ImgArmorDetectionApp;
 using ArmorDetection::VideoArmorDetectionApp;
+using ArmorDetection::LiveArmorDetectionApp;
 using ArmorDetection::BarColor;
 
 #endif //ARMORDETECTION_APP_H
