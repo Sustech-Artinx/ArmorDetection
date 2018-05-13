@@ -40,7 +40,7 @@ void Detector::hsv(const Mat &frame, Mat &lightArea, Mat &haloArea) {
     Mat hsvFrame;
     if (color == BarColor::BLUE) {
         cv::cvtColor(frame, hsvFrame, cv::COLOR_BGR2HSV);
-        Scalar lowerBlueLight(90, 0, 200), upperBlueLight(120, 140, 255);
+        Scalar lowerBlueLight(90, 0, 200), upperBlueLight(120, 160, 255);
         Scalar lowerBlueHalo(90, 120, 185), upperBlueHalo(120, 255, 255);
         cv::inRange(hsvFrame, lowerBlueLight, upperBlueLight, lightArea);
         cv::inRange(hsvFrame, lowerBlueHalo, upperBlueHalo, haloArea);
@@ -59,7 +59,7 @@ std::forward_list<RotatedRect> Detector::getLights(Mat &binaryImg) {
     std::vector<Mat> contours;
     cv::findContours(binaryImg, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    float verySmallArea = binaryImg.size().width / 30.0f;
+    float verySmallArea = binaryImg.size().width / 40.0f;
     auto notVerySmall = [verySmallArea](RotatedRect rect) {
         return rect.size.area() > verySmallArea;
     };
@@ -74,7 +74,7 @@ std::tuple<Point, float> Detector::haloCircle(Mat &binaryImg) {
     std::vector<Mat> contours;
     cv::findContours(binaryImg, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    float verySmallArea = width / 30.0f;
+    float verySmallArea = width / 40.0f;
     auto selectedContours = utils::filter(contours, [verySmallArea](Mat contour) {
         Mat xy[2];
         cv::split(contour, xy);
@@ -95,12 +95,13 @@ std::tuple<Point, float> Detector::haloCircle(Mat &binaryImg) {
         cv::minEnclosingCircle(combinedHaloPoints, originalCenter, radius);
 
         center = originalCenter;
-        if (radius > width * 0.25f)
+        if (radius > width * 0.4f) {
             radius = width * 0.25f;  // FIXME in python
-        else if (width / 15.0f < radius && radius < width / 4.0f)
+        } else if (width / 15.0f < radius && radius < width / 4.0f) {
             radius *= 1.8f;
-        else
+        } else if (radius <= width / 15.0f) {
             radius = width / 15.0f;
+        }
     } else {
         center = Point(width / 2, height / 2);
         radius = width / 3.0f;
